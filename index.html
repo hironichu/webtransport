@@ -1,0 +1,62 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <script type="module">
+        const cert = `-----BEGIN CERTIFICATE-----
+MIIBNzCB3aADAgECAgkAwkeVavtKtVUwCgYIKoZIzj0EAwIwFDESMBAGA1UEAwwJ
+bG9jYWxob3N0MB4XDTIzMDkxMjA4MjA0M1oXDTIzMDkxNjA4MjA0M1owFDESMBAG
+A1UEAwwJbG9jYWxob3N0MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEcmy1aJtg
+cvA+vy+FB3M3E2ZPaCUW+/ftcz6crd959iIfv5/1lb6BGkXaYIIR4mpnw0+PQzbA
+WxD8EneDBlRiuaMYMBYwFAYDVR0RBA0wC4IJbG9jYWxob3N0MAoGCCqGSM49BAMC
+A0kAMEYCIQDtQUIK04ZCmn0nvBvXA5jFfSP25ATn0+pfmQwdITNt+QIhAKd98EJ+
+mdUQ0DbaOWdIT61CIXDA7OMb5WohjncX3Uh7
+-----END CERTIFICATE-----
+`; 
+const hash = "/8CEMGocddD/BnUG7rdKpbYOfLjAa1DkjZiacnKmcf0=";
+const hashbuff = new TextEncoder().encode(hash);
+function str2ab(str) {
+  const buf = new ArrayBuffer(str.length);
+  const bufView = new Uint8Array(buf);
+  for (let i = 0, strLen = str.length; i < strLen; i++) {
+    bufView[i] = str.charCodeAt(i);
+  }
+  return buf;
+}
+const hashbuff2 = new Uint8Array(hashbuff);
+        const webtransport = new WebTransport('https://localhost:4433', {
+            congestionControl: "low-latency",
+            serverCertificateHashes: [{
+                hash: "sha-256",
+                value: new TextEncoder().encode(hash)
+            }],
+        });
+        webtransport.onstatechange = (event) => {
+            console.log(event);
+        }
+        // const streamswebtransport.createBidirectionalStream({})
+        // const writer = webtransport.datagrams.writable.getWriter();
+        // // while(1) {
+        //     let int2 = 0;
+        //     performance.mark('start');
+        //     // while(1) {
+        //     //     if (int2 === 1) {
+        //     //         break ;
+        //     //     }
+        //         writer.write(new TextEncoder().encode("hello " + int2++));
+        //         // await new Promise(resolve => setTimeout(resolve, 1));
+        //     // }
+        //     performance.mark('end');
+        //     performance.measure('test', 'start', 'end');
+        //     const measure = performance.getEntriesByName('test')[0];
+        //     //get the duration in seconds
+        //     const duration = measure.duration / 1000;
+        //     console.log(duration)
+        // }
+</script>
+</body>
+</html>
