@@ -57,16 +57,16 @@ impl WebTransport {
 
     pub(crate) unsafe fn handle_sess_in(&'static mut self) {
 
-		let handle = RUNTIME.handle();
+		// let handle = RUNTIME.handle();
 		
         executor::spawn(async move {
-			println!("Started thread");
+			// println!("Started thread");
 			loop {
 				let incoming_session = self.server.as_mut().unwrap().accept().await;
 
-				handle.spawn(async move {
+				RUNTIME.spawn(async move {
 					let _buffer = vec![0; 65536].into_boxed_slice();
-					println!("DBG: Waiting for session request...");
+					// println!("DBG: Waiting for session request...");
 					let session_request = incoming_session.await;
 					let accepted_session = match session_request {
 						Ok(session_request) => session_request,
@@ -76,14 +76,14 @@ impl WebTransport {
 							return ;
 						}
 					};
-					println!(
-						"DBG: New session: Authority: '{}', Path: '{}'",
-						accepted_session.authority(),
-						accepted_session.path()
-					);
+					// println!(
+					// 	"DBG: New session: Authority: '{}', Path: '{}'",
+					// 	accepted_session.authority(),
+					// 	accepted_session.path()
+					// );
 					match accepted_session.accept().await {
 						Ok(conn) => {
-							println!("DBG: Sending connection to channel.");
+							// println!("DBG: Sending connection to channel.");
 							let client = ClientConn::new(conn);
 							let client_ptr = Box::into_raw(Box::new(client));
 							assert!(!CONN_FN.is_none()); //TODO(hironichu): Handle this better.
@@ -122,11 +122,13 @@ pub unsafe extern "C" fn proc_init(
 	let key_path = Path::new(std::str::from_utf8(key_path).unwrap());
 
 	let certificates = Certificate::load(cert_path, key_path).unwrap();
+
+	let keepalive = if keepalive == 0 { None } else { Some(Duration::from_secs(keepalive)) };
 	//print the paths for debug
     let config = ServerConfig::builder()
         .with_bind_config(wtransport::config::IpBindConfig::InAddrAnyDual, port)
         .with_certificate(certificates)
-        .keep_alive_interval(Some(Duration::from_secs(keepalive)))
+        .keep_alive_interval(keepalive)
         .max_idle_timeout(Some(Duration::from_secs(timeout))).unwrap()
         .allow_migration(migration)
         .build();
@@ -178,7 +180,7 @@ pub unsafe extern "C" fn proc_init_client_streams(srv: *mut WebTransport, client
 
     let sender = client.datagram_ch_sender.clone();
 
-    println!("DBG: CONN RECEIVER PROC SET & READY");
+    // println!("DBG: CONN RECEIVER PROC SET & READY");
 	// let rthandle = RUNTIME.handle();
     // let mut buffer =::std::slice::from_raw_parts_mut(buffer, 65536);
 
@@ -227,9 +229,9 @@ pub unsafe extern "C" fn proc_init_client_streams(srv: *mut WebTransport, client
                 stream = client.conn.receive_datagram() => {
                     match stream {
                         Ok(dgram) => {
-                            let _ = sender.send_async(dgram).await;
-                            //TODO(hironichu): Remove this debug line 
-                            client.conn.send_datagram(b"ACK").unwrap();
+                            let _ = sender.send(dgram);
+                            // //TODO(hironichu): Remove this debug line 
+                            // client.conn.send_datagram(b"ACK").unwrap();
                         },
                         _ => {}
                     }
@@ -241,11 +243,11 @@ pub unsafe extern "C" fn proc_init_client_streams(srv: *mut WebTransport, client
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn proc_recv_datagram(srv: *mut WebTransport, clientptr: *mut ClientConn, buff: *mut u8) -> usize {
-    assert!(!clientptr.is_null());
+pub unsafe extern "C" fn proc_recv_datagram(srv: *mut WebTransport, client_ptr: *mut ClientConn, buff: *mut u8) -> usize {
+    assert!(!client_ptr.is_null());
 	assert!(!srv.is_null());
     
-    let client = &mut *clientptr;
+    let client = &mut *client_ptr;
 	let _server = &mut *srv;
 
     match client.datagram_ch_receiver.recv() {
@@ -265,8 +267,13 @@ pub unsafe extern "C" fn proc_send_datagram(srv: *mut WebTransport, clientptr: *
     let client = &mut *clientptr;
     let _server = &mut *srv;
     let buf = ::std::slice::from_raw_parts(buf, buflen as usize);
-
-    client.conn.send_datagram(buf).unwrap(); //TODO: Handle error
+	match client.conn.send_datagram(buf) {
+		Ok(_) => {},
+		Err(e) => {
+			//TODO: Handle error better
+			println!("Error sending datagram: {:?}", e);
+		}
+	}
 }
 
 

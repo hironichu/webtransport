@@ -35,10 +35,11 @@ const sender = new Deno.UnsafeCallback(
 
 sender.ref();
 let serverPTR;
+const decoder = new TextDecoder();
 try {
   const certpath = encodeBuffPtr("./certs/cert.crt");
   const keypath = encodeBuffPtr("./certs/cert.key");
-  serverPTR = lib.symbols.proc_init( sender.pointer, 12345 ,true, 20, 100, certpath[0], certpath[1], keypath[0], keypath[1]);
+  serverPTR = lib.symbols.proc_init( sender.pointer, 4433 ,true, 0, 100, certpath[0], certpath[1], keypath[0], keypath[1]);
   const new_connection = new Deno.UnsafeCallback(
 	{
 	  parameters: [ "pointer" ],
@@ -47,21 +48,42 @@ try {
 	(client) => {
 		console.log("DENO : New connection");
 		lib.symbols.proc_init_client_streams(serverPTR!, client, new Uint32Array(1));
-		const encodedmesg = encodeBuffPtr("Hello from deno");
-		lib.symbols.proc_send_datagram(serverPTR!, client, encodedmesg[0], encodedmesg[1]);
-		lib.symbols.proc_send_datagram(serverPTR!, client, encodedmesg[0], encodedmesg[1]);
-		lib.symbols.proc_send_datagram(serverPTR!, client, encodedmesg[0], encodedmesg[1]);
-		lib.symbols.proc_send_datagram(serverPTR!, client, encodedmesg[0], encodedmesg[1]);
-		lib.symbols.proc_send_datagram(serverPTR!, client, encodedmesg[0], encodedmesg[1]);
-		lib.symbols.proc_send_datagram(serverPTR!, client, encodedmesg[0], encodedmesg[1]);
-		lib.symbols.proc_send_datagram(serverPTR!, client, encodedmesg[0], encodedmesg[1]);
-		lib.symbols.proc_send_datagram(serverPTR!, client, encodedmesg[0], encodedmesg[1]);
-		lib.symbols.proc_send_datagram(serverPTR!, client, encodedmesg[0], encodedmesg[1]);
-		lib.symbols.proc_send_datagram(serverPTR!, client, encodedmesg[0], encodedmesg[1]);
+
+		// const encodedmesg = encodeBuffPtr("Hello from deno");
+		// lib.symbols.proc_send_datagram(serverPTR!, client, encodedmesg[0], encodedmesg[1]);
+		const buffer = new Uint8Array(65536);
+		Promise.all([(async () => {
+			console.log("DENO : Reading Datagrams");
+			let res = await lib.symbols.proc_recv_datagram(serverPTR!, client, buffer);
+			performance.clearMarks("start");
+			performance.clearMarks("end");
+			performance.clearMeasures("DENO");
+			while (res > 0) {
+				const ress = buffer.subarray(0, res as number);
+				console.log(ress)
+				const msg = parseInt(decoder.decode(ress));
+				if (msg === 0) {
+					console.log("DENO: Start timing");
+					performance.mark("start");
+				}
+				if (msg === 49999) {
+					console.log("DENO: End timing");
+					performance.mark("end");
+					performance.measure("DENO", "start", "end");
+					const measure = performance.getEntriesByName("DENO")[0];
+					console.log("Last message : " + msg);
+					console.log(measure);
+
+				}
+				lib.symbols.proc_send_datagram(serverPTR!, client, ress, res);
+				res = await lib.symbols.proc_recv_datagram(serverPTR!, client, buffer);
+			}
+		})()]);
 	},
   );
   new_connection.ref(); 
   lib.symbols.proc_listen(serverPTR, new_connection.pointer);
+  console.info("Server is running");
 } catch (e) {
 	sender.unref();
   	console.error(e);
