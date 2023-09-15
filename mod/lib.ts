@@ -2,20 +2,18 @@ import { FetchOptions, dlopen } from "./deps.ts";
 
 const symbols = {
     proc_init: {
-        parameters: ["u16", "function"],
+        parameters: ["function", "u16", "bool", "u64", "u64","buffer","usize","buffer","usize"],
         result: "pointer",
         callback: true,
     },
     proc_listen: {
-        parameters: ["pointer"],
+        parameters: ["pointer", "function"],
         result: "pointer",
-        nonblocking: true,
     },
-    proc_newconn: {
-        parameters: ["pointer"],
-        result: "pointer",
-        nonblocking: true,
-    },
+    // proc_newconn: {
+    //     parameters: ["pointer"],
+    //     result: "void",
+    // },
 	proc_init_client_streams: {
 		parameters: ["pointer", "pointer", "buffer"],
 		result: "void",
@@ -43,6 +41,7 @@ const symbols = {
 //TODO(hironichu): Make this works from internet path
 const options: FetchOptions = {
     name: "ftlt",
+	cache: "reloadAll",
     url: "./target/release/",
 };
 

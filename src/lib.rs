@@ -1,60 +1,43 @@
 use client::ClientConn;
-use flume::Receiver;
-use flume::Sender;
+// use flume::Receiver;
+// use flume::Sender;
 use once_cell::sync::Lazy;
-use wtransport::config::ServerConfigBuilder;
-use wtransport::config::WantsBindAddress;
+use std::path::Path;
 use std::time::Duration;
 use tokio::runtime::Runtime;
 use wtransport::endpoint;
 use wtransport::tls::Certificate;
-use wtransport::Connection;
+// use wtransport::Connection;
 use wtransport::Endpoint;
 use wtransport::ServerConfig;
 
 mod client;
 mod executor;
 mod certificate;
-#[repr(C)]
-pub struct ErrorMessage {
-    pub code: i32,
-    pub message: String,
-}
 
 pub struct WebTransport {
     pub server: Option<Endpoint<endpoint::Server>>,
 
-    conn_ch_sender: Option<Sender<Connection>>,
-    conn_ch_receiver: Option<Receiver<Connection>>,
+    // conn_ch_sender: Option<Sender<Connection>>,
+    // conn_ch_receiver: Option<Receiver<Connection>>,
 
+	pub conn_cb: Option<extern "C" fn(*mut ClientConn)>,
     pub state: Option<bool>,
 }
 ///------------------------------------ code  msg buf  len
 static mut SEND_FN: Option<extern "C" fn(u32, *mut u8, u32)> = None;
-
+static mut CONN_FN: Option<extern "C" fn(*mut ClientConn)> = None;
 static mut RUNTIME: Lazy<Runtime> = Lazy::new(|| Runtime::new().unwrap());
 
 impl WebTransport {
 
     pub(crate) unsafe fn new(
-        port: u16,
         sender_fn: Option<extern "C" fn(u32, *mut u8, u32)>,
         config: ServerConfig
     ) -> Result<Self, u32> {
-
         SEND_FN = sender_fn;
-        
         let _guard = RUNTIME.enter();
-
-        // let config = ServerConfig::builder()
-        //     .with_bind_config(wtransport::config::IpBindConfig::InAddrAnyDual, port)
-        //     .with_certificate(Certificate::load("cert.pem", "cert.pem").unwrap())
-        //     .keep_alive_interval(Some(Duration::from_secs(1)))
-        //     .allow_migration(true)
-        //     .max_idle_timeout(Some(Duration::from_secs(20)));
-        //     .build();
-
-        let (conn_sender, conn_reciever) = flume::unbounded();
+        // let (conn_sender, conn_reciever) = flume::unbounded();
         //get the ref of config
         let server = match Endpoint::server(config) {
             Ok(server) => server,
@@ -64,70 +47,90 @@ impl WebTransport {
             }
         };
         Ok(Self {
+			conn_cb: None,
             server: Some(server),
             state: Some(true),
-            conn_ch_sender: Some(conn_sender),
-            conn_ch_receiver: Some(conn_reciever),
+            // conn_ch_sender: Some(conn_sender),
+            // conn_ch_receiver: Some(conn_reciever),
         })
     }
 
     pub(crate) unsafe fn handle_sess_in(&'static mut self) {
-        println!("Waiting for session request...");
-        // let rt = runtime.as_mut().unwrap();
-		// let _ = rt.enter();
-		let handle = RUNTIME.handle().clone();
+
+		let handle = RUNTIME.handle();
 		
         executor::spawn(async move {
-			for id in 0.. {
-				let sender = self.conn_ch_sender.as_ref().unwrap();
+			println!("Started thread");
+			loop {
 				let incoming_session = self.server.as_mut().unwrap().accept().await;
-				println!("SEssion Number {}", id);
+
 				handle.spawn(async move {
-					let _test = sender.capacity();
 					let _buffer = vec![0; 65536].into_boxed_slice();
-					println!("Waiting for session request...");
-					let session_request = incoming_session.await.unwrap();
+					println!("DBG: Waiting for session request...");
+					let session_request = incoming_session.await;
+					let accepted_session = match session_request {
+						Ok(session_request) => session_request,
+						Err(e) => {
+							//TODO(hironichu): Handle error with callback SENDER_FN
+							println!("Error accepting session: {:?}", e);
+							return ;
+						}
+					};
 					println!(
-						"New session: Authority: '{}', Path: '{}'",
-						session_request.authority(),
-						session_request.path()
+						"DBG: New session: Authority: '{}', Path: '{}'",
+						accepted_session.authority(),
+						accepted_session.path()
 					);
-					let connection = session_request.accept().await.unwrap();
-					println!("Waiting for data from client...");
-					let _ = sender.send_async(connection).await;
-					// self.conn_ch_sender.as_mut().unwrap().send(connection).unwrap();
+					match accepted_session.accept().await {
+						Ok(conn) => {
+							println!("DBG: Sending connection to channel.");
+							let client = ClientConn::new(conn);
+							let client_ptr = Box::into_raw(Box::new(client));
+							assert!(!CONN_FN.is_none()); //TODO(hironichu): Handle this better.
+							CONN_FN.unwrap()(client_ptr);
+						},
+						_ => {
+							println!("Error accepting connection");
+						}
+					}
+
 				});
 			}
         }).detach();
     }
 }
 
-///
+
 #[no_mangle]
-pub unsafe extern "C" fn proc_create_config(port: u16, timeout: u64, keepalive: u64, migration: bool, ) -> *mut ServerConfig {
-    // let config = ServerConfig::builder();
+pub unsafe extern "C" fn proc_init(
+	send_func: Option<extern "C" fn(u32, *mut u8, u32)>,
+    port: u16,
+    migration: bool,
+	keepalive: u64,
+	timeout: u64,
+	cert_path: *const u8,
+	cert_path_len: usize,
+	key_path: *const u8,
+	key_path_len: usize,
+) -> *mut WebTransport {
+    assert!(!send_func.is_none());
+    assert!(port > 0);
+
+	let cert_path = ::std::slice::from_raw_parts(cert_path, cert_path_len);
+	let key_path = ::std::slice::from_raw_parts(key_path, key_path_len);
+	let cert_path = Path::new(std::str::from_utf8(cert_path).unwrap());
+	let key_path = Path::new(std::str::from_utf8(key_path).unwrap());
+
+	let certificates = Certificate::load(cert_path, key_path).unwrap();
+	//print the paths for debug
     let config = ServerConfig::builder()
         .with_bind_config(wtransport::config::IpBindConfig::InAddrAnyDual, port)
-        .with_certificate(Certificate::load("cert.pem", "cert.pem").unwrap())
+        .with_certificate(certificates)
         .keep_alive_interval(Some(Duration::from_secs(keepalive)))
         .max_idle_timeout(Some(Duration::from_secs(timeout))).unwrap()
         .allow_migration(migration)
         .build();
-    let config_ptr = Box::into_raw(Box::new(config));
-    config_ptr
-}
-
-#[no_mangle]
-pub unsafe extern "C" fn proc_init(
-    port: u16,
-    send_func: Option<extern "C" fn(u32, *mut u8, u32)>,
-    configptr: *mut ServerConfig 
-) -> *mut WebTransport {
-    assert!(!send_func.is_none());
-    assert!(port > 0);
-    let config = &mut *configptr;
-
-    let server = WebTransport::new(port, send_func, config);
+    let server = WebTransport::new(send_func, config);
     match server {
         Ok(server) => {
             let server_ptr = Box::into_raw(Box::new(server));
@@ -140,29 +143,30 @@ pub unsafe extern "C" fn proc_init(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn proc_listen(server_ptr: *mut WebTransport) {
+pub unsafe extern "C" fn proc_listen(server_ptr: *mut WebTransport, cb: Option<extern "C" fn(*mut ClientConn)>) {
     assert!(!server_ptr.is_null());
     let server = &mut *server_ptr;
+	server.conn_cb = cb;
+	CONN_FN = cb;
     server.handle_sess_in();
 }
 
-#[no_mangle]
-pub unsafe extern "C" fn proc_newconn(srv: *mut WebTransport) -> *mut ClientConn {
-    assert!(!srv.is_null());
-
-    let server = &mut *srv;
-
-    match server.conn_ch_receiver.as_ref().unwrap().recv() {
-        Ok(conn) => {
-            let client_conn = ClientConn::new(conn);
-            let clientptr = Box::into_raw(Box::new(client_conn));
-			clientptr
-        }
-        _ => {
-            panic!("Error receiving connection");
-        }
-    }
-}
+// #[no_mangle]
+// pub unsafe extern "C" fn proc_newconn(srv: *mut WebTransport, cb: Option<extern "C" fn(*mut ClientConn)>) {
+//     assert!(!srv.is_null());
+// 	assert!(!cb.is_none());
+//     let server = &mut *srv;
+//     match server.conn_ch_receiver.as_ref().unwrap().recv() {
+//         Ok(conn) => {
+//             let client_conn = ClientConn::new(conn);
+//             let client_ptr = Box::into_raw(Box::new(client_conn));
+// 			cb.unwrap()(client_ptr);
+//         }
+//         _ => {
+//             //panic!("Error receiving connection");
+//         }
+//     }
+// }
 
 #[no_mangle]
 pub unsafe extern "C" fn proc_init_client_streams(srv: *mut WebTransport, clientptr: *mut ClientConn, _buffer : *mut u8) {

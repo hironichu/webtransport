@@ -1,0 +1,9 @@
+{
+	"tasks": {
+		"examples:web": "deno run -A ./examples/web_server.js",
+		"start": "deno run -A --unstable ./mod/deno.ts"
+	},
+	"compilerOptions": {
+		"checkJs": true
+	}
+}

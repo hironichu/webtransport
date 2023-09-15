@@ -3,7 +3,14 @@ import { PackedStruct, u32, u8, NullTerminatedString } from "https://deno.land/x
 
 import { LIB } from "./lib.ts";
 const lib = LIB;
-
+export function encode(v: string | Uint8Array): Uint8Array {
+	if (typeof v !== "string") return v;
+	return new TextEncoder().encode(v);
+}
+export function encodeBuffPtr(v: string | Uint8Array): [Uint8Array, number] {
+	if (typeof v !== "string") return [v, v.length];
+	return [new TextEncoder().encode(v), v.length];
+}
 
 const ptrstate = new Uint32Array(1);
 
@@ -25,12 +32,42 @@ const sender = new Deno.UnsafeCallback(
     console.log(pointer);
   },
 );
+
+sender.ref();
+let serverPTR;
 try {
-  const resptr = lib.symbols.proc_init(4433, sender.pointer);
-  lib.symbols.proc_listen(resptr);
+  const certpath = encodeBuffPtr("./certs/cert.crt");
+  const keypath = encodeBuffPtr("./certs/cert.key");
+  serverPTR = lib.symbols.proc_init( sender.pointer, 12345 ,true, 20, 100, certpath[0], certpath[1], keypath[0], keypath[1]);
+  const new_connection = new Deno.UnsafeCallback(
+	{
+	  parameters: [ "pointer" ],
+	  result: "void",
+	},
+	(client) => {
+		console.log("DENO : New connection");
+		lib.symbols.proc_init_client_streams(serverPTR!, client, new Uint32Array(1));
+		const encodedmesg = encodeBuffPtr("Hello from deno");
+		lib.symbols.proc_send_datagram(serverPTR!, client, encodedmesg[0], encodedmesg[1]);
+		lib.symbols.proc_send_datagram(serverPTR!, client, encodedmesg[0], encodedmesg[1]);
+		lib.symbols.proc_send_datagram(serverPTR!, client, encodedmesg[0], encodedmesg[1]);
+		lib.symbols.proc_send_datagram(serverPTR!, client, encodedmesg[0], encodedmesg[1]);
+		lib.symbols.proc_send_datagram(serverPTR!, client, encodedmesg[0], encodedmesg[1]);
+		lib.symbols.proc_send_datagram(serverPTR!, client, encodedmesg[0], encodedmesg[1]);
+		lib.symbols.proc_send_datagram(serverPTR!, client, encodedmesg[0], encodedmesg[1]);
+		lib.symbols.proc_send_datagram(serverPTR!, client, encodedmesg[0], encodedmesg[1]);
+		lib.symbols.proc_send_datagram(serverPTR!, client, encodedmesg[0], encodedmesg[1]);
+		lib.symbols.proc_send_datagram(serverPTR!, client, encodedmesg[0], encodedmesg[1]);
+	},
+  );
+  new_connection.ref(); 
+  lib.symbols.proc_listen(serverPTR, new_connection.pointer);
 } catch (e) {
-  // console.error(e);
+	sender.unref();
+  	console.error(e);
 }
+if (!serverPTR) throw new Error("Server is not running");
+
 //
 
 // Promise.all([(async () => {
@@ -62,14 +99,5 @@ try {
 // 	}
 // })()]);
 
-// // setInterval(() => {
-// //     console.log(ptrstate[0]);
-// // }, 5000);
 
-// Deno.serve((_req: Request) => {
-//     return new Response(Deno.readTextFileSync("./index.html"), {
-//         headers: {
-//             "content-type": "text/html"
-//         }
-//     });
-// })
+
