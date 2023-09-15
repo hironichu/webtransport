@@ -1,13 +1,13 @@
 use client::ClientConn;
 use flume::Receiver;
 use flume::Sender;
-// use futures_util::{pin_mut, select, FutureExt};
+use futures_util::{pin_mut, select, FutureExt};
 use std::time::Duration;
 use tokio::runtime::Runtime;
-// use wtransport::datagram::Datagram;
+use wtransport::datagram::Datagram;
 use wtransport::endpoint;
 
-// use wtransport::endpoint::SessionRequest;
+use wtransport::endpoint::SessionRequest;
 use wtransport::tls::Certificate;
 use wtransport::Connection;
 use wtransport::Endpoint;
@@ -28,13 +28,12 @@ pub struct WebTransport {
     //
     conn_ch_sender: Option<Sender<Connection>>,
     conn_ch_receiver: Option<Receiver<Connection>>,
-
-	// datagram_ch_sender: Option<Sender<Datagram>>,
-	// datagram_ch_receiver: Option<Receiver<Datagram>>,
     pub state: Option<bool>,
 }
 static mut SEND_FN: Option<extern "C" fn(u32, *mut u8, u32)> = None;
-
+enum Next {
+    NewSessionRequest(Result<SessionRequest, wtransport::error::ConnectionError>),
+}
 impl WebTransport {
     pub(crate) fn new(
         port: u16,
@@ -78,72 +77,49 @@ impl WebTransport {
     pub(crate) unsafe fn handle_sess_in(&'static mut self, runtime: *mut Runtime) {
         println!("Waiting for session request...");
         let rt = runtime.as_mut().unwrap();
-		// let _ = rt.enter();
-		let handle = rt.handle().clone();
-		
         rt.spawn(async move {
-			for id in 0.. {
-				let sender = self.conn_ch_sender.as_ref().unwrap();
-				let incoming_session = self.server.as_mut().unwrap().accept().await;
-				println!("SEssion Number {}", id);
-				handle.spawn(async move {
-					let _test = sender.capacity();
-					let _buffer = vec![0; 65536].into_boxed_slice();
-					println!("Waiting for session request...");
-					let session_request = incoming_session.await.unwrap();
-					println!(
-						"New session: Authority: '{}', Path: '{}'",
-						session_request.authority(),
-						session_request.path()
-					);
-					let connection = session_request.accept().await.unwrap();
-					println!("Waiting for data from client...");
-					let _ = sender.send_async(connection).await;
-					// self.conn_ch_sender.as_mut().unwrap().send(connection).unwrap();
-				});
-			}
-            // for _ in 0.. {
-            //     // let receiver = self.conn_ch_receiver.as_mut().unwrap();
-            //     let sender = self.conn_ch_sender.as_ref().unwrap();
-            //     let next = {
-            //         // let insess_receiver = receiver.recv_async().fuse();
-            //         let incoming_session = self.server.as_mut().unwrap().accept().fuse();
+            loop {
+                // let receiver = self.conn_ch_receiver.as_mut().unwrap();
+                let sender = self.conn_ch_sender.as_ref().unwrap();
+                let next = {
+                    // let insess_receiver = receiver.recv_async().fuse();
+                    let incoming_session = self.server.as_mut().unwrap().accept().fuse();
 
-            //         // pin_mut!(sender);
-            //         pin_mut!(incoming_session);
-            //         select! {
-            //             result = incoming_session => {
-            //                 let sess_req = result.await;
-            //                 Next::NewSessionRequest(sess_req)
-            //             }
-            //         }
-            //     };
-            //     match next {
-            //         Next::NewSessionRequest(sessreq) => {
-            //             match sessreq {
-            //                 Ok(sessreq) => {
-            //                     println!(
-            //                         "Received Session Request from client: {:?}",
-            //                         sessreq.authority()
-            //                     );
-            //                     // self.handle_session_impl(sessreq.accept().await);
-            //                     let conn = sessreq.accept().await.unwrap();
-            //                     println!(
-            //                         "Accepted session request from client: {:?}",
-            //                         conn.remote_address()
-            //                     );
+                    // pin_mut!(sender);
+                    pin_mut!(incoming_session);
+                    select! {
+                        result = incoming_session => {
+                            let sess_req = result.await;
+                            Next::NewSessionRequest(sess_req)
+                        }
+                    }
+                };
+                match next {
+                    Next::NewSessionRequest(sessreq) => {
+                        match sessreq {
+                            Ok(sessreq) => {
+                                println!(
+                                    "Received Session Request from client: {:?}",
+                                    sessreq.authority()
+                                );
+                                // self.handle_session_impl(sessreq.accept().await);
+                                let conn = sessreq.accept().await.unwrap();
+                                println!(
+                                    "Accepted session request from client: {:?}",
+                                    conn.remote_address()
+                                );
 
-            //                     let _ = sender.send(conn);
-            //                     // self.conn_ch_sender.as_mut().unwrap().send(conn).unwrap();
-            //                 }
-            //                 Err(e) => {
-            //                     println!("Error accepting session request: {:?}", e);
-            //                 }
-            //             }
-            //             // insess_sender.send_async(sessreq).await.unwrap();
-            //         }
-            //     }
-            // }
+                                let _ = sender.send_async(conn).await;
+                                // self.conn_ch_sender.as_mut().unwrap().send(conn).unwrap();
+                            }
+                            Err(e) => {
+                                println!("Error accepting session request: {:?}", e);
+                            }
+                        }
+                        // insess_sender.send_async(sessreq).await.unwrap();
+                    }
+                }
+            }
         });
     }
 }
@@ -161,7 +137,6 @@ pub unsafe extern "C" fn start(
 ) -> *mut WebTransport {
     assert!(!rt_ptr.is_null());
     assert!(!res.is_null());
-
     let _runtime = &mut *rt_ptr;
     let server = WebTransport::new(4433, send_func, _runtime);
     match server {
@@ -195,12 +170,11 @@ pub unsafe extern "C" fn proc_rec(srv: *mut WebTransport) -> *mut ClientConn {
 
     match server.conn_ch_receiver.as_ref().unwrap().recv() {
         Ok(conn) => {
-            // println!("New client : {:?}", conn.remote_address());
-            // let connptr = Box::into_raw(Box::new(conn));
-            let client_conn = ClientConn::new(conn);
+            println!("New client : {:?}", conn.remote_address());
+            let connptr = Box::into_raw(Box::new(conn));
+            let client_conn = ClientConn::new(connptr);
             let clientptr = Box::into_raw(Box::new(client_conn));
-            // Box::into_raw(Box::new(conn))
-			clientptr
+            clientptr
         }
         _ => {
             panic!("Error receiving connection");
@@ -211,25 +185,21 @@ pub unsafe extern "C" fn proc_rec(srv: *mut WebTransport) -> *mut ClientConn {
 //create a method that creates a unbound channel and returns a pointer to the sender/receiver pair to the FFI
 
 #[no_mangle]
-pub unsafe extern "C" fn proc_rec_streams(srv: *mut WebTransport, rt: *mut Runtime, clientptr: *mut ClientConn) {
-    assert!(!clientptr.is_null());
-	assert!(!srv.is_null());
-    let client = &mut *clientptr;
-	let _server = &mut *srv;
-	let _runtime = &mut *rt;
-    // let connection = client.get_conn();
-    let sender = client.datagram_ch_sender.clone();
+pub unsafe extern "C" fn proc_rec_streams(client: *mut ClientConn) {
+    assert!(!client.is_null());
+    let client = &mut *client;
+    let connection = client.get_conn();
+    let sender = client.datagram_ch_sender.as_ref().unwrap();
 
     println!("CONN RECEIVER PROC SET & READY");
-	// let rthandle = _runtime.handle();
-    _runtime.spawn(async move {
+    executor::spawn(async move {
 		let mut buffer = vec![0; 65536].into_boxed_slice();
 
         loop {
             // let sender = sender;
-            // println!("Waiting for datagram from client");
+            println!("Waiting for datagram from client");
             tokio::select! {
-                stream = client.conn.accept_bi() => {
+                stream = connection.accept_bi() => {
                     match stream {
                         Ok(mut stream) => {
 
@@ -241,13 +211,13 @@ pub unsafe extern "C" fn proc_rec_streams(srv: *mut WebTransport, rt: *mut Runti
 
                             stream.0.write_all(b"ACK").await.unwrap();
                         },
-                        _ => {
-                            
+                        Err(e) => {
+                            break ;
                         }
                     };
 
                 }
-                stream = client.conn.accept_uni() => {
+                stream = connection.accept_uni() => {
                     // let mut stream = stream;
                     match stream {
                         Ok(mut stream) => {
@@ -261,16 +231,17 @@ pub unsafe extern "C" fn proc_rec_streams(srv: *mut WebTransport, rt: *mut Runti
 
                             println!("Received (uni) '{str_data}' from client");
 
-                            let mut stream = client.conn.open_uni().await.unwrap().await.unwrap();
+                            let mut stream = connection.open_uni().await.unwrap().await.unwrap();
                             stream.write_all(b"ACK").await.unwrap();
                         },
                         _ => {
                             // println!("Error accepting UNI stream: {:?}", e);
+                            break ;
                         }
                     }
 
                 }
-                    dgram = client.conn.receive_datagram() => {
+                    dgram = connection.receive_datagram() => {
                         match dgram {
                             Ok(dgram) => {
 
@@ -278,27 +249,28 @@ pub unsafe extern "C" fn proc_rec_streams(srv: *mut WebTransport, rt: *mut Runti
                                 sender.send(dgram).unwrap();
                                 // let str_data = std::str::from_utf8(&dgram).unwrap();
                                 // println!("Received (dgram) '{str_data}' from client");
-                                client.conn.send_datagram(b"ACK").unwrap();
+                                connection.send_datagram(b"ACK").unwrap();
                             },
                             _ => {
                                 // break;
-                                // println!("Error receiving datagram");
+                                println!("Error receiving datagram");
+
                             }
                         }
                     },
 
             }
         }
-    });//.detach();
+    })
+    .detach();
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn proc_recv_ch_datagram(srv: *mut WebTransport, clientptr: *mut ClientConn, buff: *mut u8) -> usize {
-    assert!(!clientptr.is_null());
-	assert!(!srv.is_null());
-    let client = &mut *clientptr;
-	let _server = &mut *srv;
-    match client.datagram_ch_receiver.recv() {
+pub unsafe extern "C" fn proc_recv_ch_datagram(client: *mut ClientConn, buff: *mut u8) -> usize {
+    assert!(!client.is_null());
+    let client = &mut *client;
+
+    match client.datagram_ch_receiver.as_ref().unwrap().recv() {
         Ok(dgram) => {
             ::std::slice::from_raw_parts_mut(buff, dgram.len()).copy_from_slice(&dgram);
             dgram.len()
@@ -311,5 +283,5 @@ pub unsafe extern "C" fn proc_recv_ch_datagram(srv: *mut WebTransport, clientptr
 pub unsafe extern "C" fn test_proc(client: *mut ClientConn) {
     assert!(!client.is_null());
     let client = &mut *client;
-    println!("TEST PROC {} ", client.conn.remote_address());
+    println!("TEST PROC {} ", client.get_conn().remote_address());
 }

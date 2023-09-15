@@ -1,62 +1,160 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Document</title>
 </head>
+
 <body>
-    <script type="module">
-        const cert = `-----BEGIN CERTIFICATE-----
-MIIBNzCB3aADAgECAgkAwkeVavtKtVUwCgYIKoZIzj0EAwIwFDESMBAGA1UEAwwJ
-bG9jYWxob3N0MB4XDTIzMDkxMjA4MjA0M1oXDTIzMDkxNjA4MjA0M1owFDESMBAG
-A1UEAwwJbG9jYWxob3N0MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAEcmy1aJtg
-cvA+vy+FB3M3E2ZPaCUW+/ftcz6crd959iIfv5/1lb6BGkXaYIIR4mpnw0+PQzbA
-WxD8EneDBlRiuaMYMBYwFAYDVR0RBA0wC4IJbG9jYWxob3N0MAoGCCqGSM49BAMC
-A0kAMEYCIQDtQUIK04ZCmn0nvBvXA5jFfSP25ATn0+pfmQwdITNt+QIhAKd98EJ+
-mdUQ0DbaOWdIT61CIXDA7OMb5WohjncX3Uh7
------END CERTIFICATE-----
-`; 
-const hash = "/8CEMGocddD/BnUG7rdKpbYOfLjAa1DkjZiacnKmcf0=";
-const hashbuff = new TextEncoder().encode(hash);
-function str2ab(str) {
-  const buf = new ArrayBuffer(str.length);
-  const bufView = new Uint8Array(buf);
-  for (let i = 0, strLen = str.length; i < strLen; i++) {
-    bufView[i] = str.charCodeAt(i);
-  }
-  return buf;
-}
-const hashbuff2 = new Uint8Array(hashbuff);
-        const webtransport = new WebTransport('https://localhost:4433', {
-            congestionControl: "low-latency",
-            serverCertificateHashes: [{
-                hash: "sha-256",
-                value: new TextEncoder().encode(hash)
-            }],
-        });
-        webtransport.onstatechange = (event) => {
-            console.log(event);
-        }
-        // const streamswebtransport.createBidirectionalStream({})
-        // const writer = webtransport.datagrams.writable.getWriter();
-        // // while(1) {
-        //     let int2 = 0;
-        //     performance.mark('start');
-        //     // while(1) {
-        //     //     if (int2 === 1) {
-        //     //         break ;
-        //     //     }
-        //         writer.write(new TextEncoder().encode("hello " + int2++));
-        //         // await new Promise(resolve => setTimeout(resolve, 1));
-        //     // }
-        //     performance.mark('end');
-        //     performance.measure('test', 'start', 'end');
-        //     const measure = performance.getEntriesByName('test')[0];
-        //     //get the duration in seconds
-        //     const duration = measure.duration / 1000;
-        //     console.log(duration)
-        // }
-</script>
+	<script type="module">
+		// const cert = `-----BEGIN CERTIFICATE-----\nMIIDLTCCAhWgAwIBAgIUchaBMPWLkCvnsAtp9qohJfGWr7kwDQYJKoZIhvcNAQELBQAwGzEZMBcGA1UEAwwQVGVzdCBDZXJ0aWZpY2F0ZTAeFw0yMzA5MTQxNDE3MTZaFw0yMzEwMTQxNDE3MTZaMBsxGTAXBgNVBAMMEFRlc3QgQ2VydGlmaWNhdGUwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQCVyXZN1oL+6D1jVuzjSyExD5P6SOrDwC3hviZmhjP9jeOwG9gb7bi+lza40SxvtDMNB0QzZQFPjMKTJca0idpLV3+v2hhficwbwfq2T5EialOfiQBOglXUsQBnuK2VbGOOoedO115BOLdoZ0jd0HzWtgH1nkd8scX8YsGxqc+dGnv2nzkTSnr25hL6Go+kPiPH87HFDgUoQnO4bPAtHMljJVQv5+vuC7DMEbNC3VprQp4DCbXjc2OPFO1RIrlMrOQufDOGtKcPaQSuyJBh4BXs0PL6sMEuRKlinEkeGYSDRe0jG084KBz82NpcHcl2GdChCGzeUCB5utxtVIdf0kPvAgMBAAGjaTBnMB0GA1UdDgQWBBTUe5gB7JjjNnvY/1qhvcm3DlDGUTAfBgNVHSMEGDAWgBTUe5gB7JjjNnvY/1qhvcm3DlDGUTAPBgNVHRMBAf8EBTADAQH/MBQGA1UdEQQNMAuCCWxvY2FsaG9zdDANBgkqhkiG9w0BAQsFAAOCAQEAOnkFLGRpJMx2FkQSt0PiPzXdPUx5PiR3gutu9TpJv18hhtNeuyto/oGefrcp8lX4CHwogc6ZXQISxpSoJiKQ4b04qydfFEbWkPvGkgjN/p0TgRftNglGgT78sc2xKgVXZ2BVg8uq4U8gfsOxHtpMeA4WGwXGeB2+K+RddkfuLkff9wYhsrH2n5VavdHVfFHaZhF1nivSM+soEaz9TZ1oht3JuCxQ8Q8vXR851/Uvlxjli7TX3fDZO2dMGtttpT8yKBjjcQ62JiHDb6dGh/dWAtlJy/f7f8XCPK8CfK/fAlEIh+P6YByO88J1pBNbbJSOfP4ncB7XqbCbYq8PMPdpCw==\n-----END CERTIFICATE-----\n`; 
+		// const hash = "/8CEMGocddD/BnUG7rdKpbYOfLjAa1DkjZiacnKmcf0=";
+		// const hashbuff = new TextEncoder().encode(hash);
+		const cert = `-----BEGIN CERTIFICATE-----\nMIICpTCCAiugAwIBAgITVQuxyFwkoVJPqZ4N2ZkCQJ9wrDAKBggqhkjOPQQDAjCBiTELMAkGA1UEBhMCRlIxDzANBgNVBAgMBkZyYW5jZTENMAsGA1UEBwwEbHlvbjESMBAGA1UECgwJbG9jYWxob3N0MRIwEAYDVQQLDAlsb2NhbGhvc3QxEjAQBgNVBAMMCWxvY2FsaG9zdDEeMBwGCSqGSIb3DQEJARYPYWRtaW5AbG9jYWxob3N0MB4XDTIzMDkxNDE3NTgzMloXDTIzMDkyMTE3NTgzMlowgYkxCzAJBgNVBAYTAkZSMQ8wDQYDVQQIDAZGcmFuY2UxDTALBgNVBAcMBGx5b24xEjAQBgNVBAoMCWxvY2FsaG9zdDESMBAGA1UECwwJbG9jYWxob3N0MRIwEAYDVQQDDAlsb2NhbGhvc3QxHjAcBgkqhkiG9w0BCQEWD2FkbWluQGxvY2FsaG9zdDB2MBAGByqGSM49AgEGBSuBBAAiA2IABMEdWHmx8jtLWhkEOHeUmjPtSbOfIjiIpgBfIs6pulbH5nzQvaQeer4QGeut5scbQHYx+oMXQnzbi/S7bcaAA07BskSMtLQPYKTfV/G/adf5booJqUPrnB9/U+iHwJa0rKNTMFEwHQYDVR0OBBYEFFCNsu4t1jQrVRjtcARZq5yncWmsMB8GA1UdIwQYMBaAFFCNsu4t1jQrVRjtcARZq5yncWmsMA8GA1UdEwEB/wQFMAMBAf8wCgYIKoZIzj0EAwIDaAAwZQIxAILYvN3YIYwOD8K7lZN47ecYd9+DHEVc7VYlVIi+xDl/OH4urkmyaQBqYPIF3gNyxQIwPP3Uf85Vg7VdXzxmNQeHj9+a9WDBX7pvrDR6eZC2G9hTnaWEc200xA12aaIE9T72\n-----END CERTIFICATE-----\n`;
+		function str2ab(str) {
+			const buf = new ArrayBuffer(str.length);
+			const bufView = new Uint8Array(buf);
+			for (let i = 0, strLen = str.length; i < strLen; i++) {
+				bufView[i] = str.charCodeAt(i);
+			}
+			return buf;
+		}
+		async function calculateSHA256(buffer) {
+			const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
+			return hashBuffer;
+		}
+		async function calculateSHA256Str(buffer) {
+			const hashBuffer = await crypto.subtle.digest('SHA-256', buffer);
+			const hashArray = Array.from(new Uint8Array(hashBuffer));
+			const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+			return hashHex;
+		}
+		// const certPem = '-----BEGIN CERTIFICATE-----\n...';
+		// console.log(cert.replace(/-----BEGIN CERTIFICATE-----\n/, '').replace(/\n-----END CERTIFICATE-----\n/, ''))
+		const certDer = atob(cert.replace(/-----BEGIN CERTIFICATE-----\n/, '').replace(/\n-----END CERTIFICATE-----\n/, ''));
+		const certArray = new Uint8Array(certDer.length);
+		for (let i = 0; i < certDer.length; i++) {
+			certArray[i] = certDer.charCodeAt(i);
+		}
+		// const hashtr = await calculateSHA256Str(certArray);
+		const hash = await calculateSHA256(certArray);
+		function formatByteSlice(bytes) {
+			const array = new Uint8Array(bytes);
+			const hex = Array.from(array, b => b.toString(16).padStart(2, '0')).join('');
+			return hex;
+		}
+		function base64ToArrayBuffer(base64) {
+			var binaryString = atob(base64);
+			var bytes = new Uint8Array(binaryString.length);
+			for (var i = 0; i < binaryString.length; i++) {
+				bytes[i] = binaryString.charCodeAt(i);
+			}
+			return bytes.buffer;
+		}
+		// function str2ab(str) {
+		//   const buf = new ArrayBuffer(str.length);
+		//   const bufView = new Uint8Array(buf);
+		//   for (let i = 0, strLen = str.length; i < strLen; i++) {
+		//     bufView[i] = str.charCodeAt(i);
+		//   }
+		//   return buf;
+		// }
+		const dataa = "ZugpYQ6pQVqnFtRv1VtRPH5awHPUX6OiDmGNA/TGK5c="
+		const dataaBuff = base64ToArrayBuffer(dataa);
+		const databuff2 = str2ab(dataa);
+		async function readData(readable) {
+			const reader = readable.getReader();
+			while (true) {
+				const { value, done } = await reader.read();
+				if (done) {
+					break;
+				}
+				// value is a Uint8Array.
+				console.log(value);
+			}
+		}
+		async function writeData(writable) {
+			const writer = writable.getWriter();
+			await writer.ready;
+			const data1 = new Uint8Array([65, 66, 67]);
+			const data2 = new Uint8Array([68, 69, 70]);
+			writer.write(data1);
+			await writer.ready;
+			console.log("data1");
+			await writer.write(data2);
+		}
+		// console.log(hash);
+		// console.log(hash, formatByteSlice(hash));
+		// const hashbuff2 = new Uint8Array(hashbuff);
+		window.serveurDEMO = null;
+		window.writeDDBN = null;
+		const webtransport = new WebTransport('https://localhost:4433', {
+			congestionControl: "throughput",
+			serverCertificateHashes: [{
+				hash: "SHA-256",
+				value: new TextEncoder().encode(formatByteSlice(hash)),
+			}],
+		})
+		await webtransport.ready;
+		window.serveurDEMO = webtransport;
+		webtransport.onstatechange = (event) => {
+			console.log("EVENT : ", event);
+		}
+		try {
+			// const stream = await webtransport.createBidirectionalStream();
+			const writable = await webtransport.datagrams.writable;
+			const readable = await webtransport.datagrams.readable;
+			// window.writeDDBN = webtransport.datagrams.writable.getWriter();
+			// const readable = streams.readable.getReader();
+			//send Hello world
+			// await writeable.write(new TextEncoder().encode("Hello world"));
+			// while(1) {
+			let int2 = 0;
+			performance.mark('start');
+			// while(1) {
+			//     if (int2 === 1000) {
+			//         break ;
+			//     }
+			// window.writeDDBN.write(new TextEncoder().encode(int2++)).then(() => {
+			// 	console.log("writeable");
+			// });
+			readData(readable);
+			writeData(writable);
+			
+			//send Hello world
+			// await new Promise(resolve => setTimeout(resolve, 1000));
+			// }
+			performance.mark('end');
+			performance.measure('test', 'start', 'end');
+			const measure = performance.getEntriesByName('test')[0];
+			//get the duration in seconds with millisecond precision
+			const duration = measure.duration / 1000;
+			console.log(duration)
+
+		} catch (e) {
+			console.error(e);
+		}
+		// const writer = webtransport.datagrams.writable.getWriter();
+		// // // while(1) {
+		//     let int2 = 0;
+		// //     performance.mark('start');
+		// //     // while(1) {
+		// //     //     if (int2 === 1) {
+		// //     //         break ;
+		// //     //     }
+		//         writer.write(new TextEncoder().encode("hello " + int2++));
+		//         // await new Promise(resolve => setTimeout(resolve, 1));
+		//     // }
+		//     performance.mark('end');
+		//     performance.measure('test', 'start', 'end');
+		//     const measure = performance.getEntriesByName('test')[0];
+		//     //get the duration in seconds
+		//     const duration = measure.duration / 1000;
+		//     console.log(duration)
+		// }
+	</script>
 </body>
+
 </html>

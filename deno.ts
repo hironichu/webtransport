@@ -1,4 +1,4 @@
-const lib = Deno.dlopen("./target/release/libftlt.dylib", {
+const lib = Deno.dlopen("./target/release/ftlt.dll", {
     start: {
         parameters: ["function", "buffer", "pointer"],
         result: "pointer",
@@ -13,11 +13,26 @@ const lib = Deno.dlopen("./target/release/libftlt.dylib", {
         parameters: [],
         result: "pointer",
     },
-    recv_conn: {
+    proc_rec: {
         parameters: ["pointer"],
         result: "pointer",
         nonblocking: true,
     },
+	proc_rec_streams: {
+		parameters: ["pointer", "pointer", "pointer"],
+		result: "void",
+		nonblocking: true,
+	},
+	proc_recv_ch_datagram: {
+		parameters: ["pointer", "pointer", "buffer"],
+		result: "usize",
+		nonblocking: true,
+	},
+	test_proc: {
+		parameters: ["pointer"],
+		result: "void",
+		nonblocking: true,
+	},
 })
 
 const ptrstate = new Uint32Array(1);
@@ -40,30 +55,37 @@ const sender = new Deno.UnsafeCallback(
   );
   const runtime = lib.symbols.init_runtime();
   const resptr = lib.symbols.start(sender.pointer, ptrstate, runtime);
-  const _ = await lib.symbols.handle_session(resptr, runtime);
+  await lib.symbols.handle_session(resptr, runtime);
 
-//   const delayedResponses = {
-//     delays: [500],
-  
-//     wait(delay: number) {
-//       return new Promise((resolve) => {
-//         setTimeout(resolve, delay);
-//       });
-//     },
-  
-//     async *[Symbol.asyncIterator]() {
-//       for (const delay of this.delays) {
-//         await this.wait(delay);
-//         yield lib.symbols.recv_conn(resptr);
-//       }
-//     },
-//   };
-//add ASyncIterator symbol to lib.symbols.recv_conn(resptr)
-// let conn = await lib.symbols.recv_conn(resptr);
-// for await (const conn of delayedResponses) {
-//     console.log(conn);
-// }
-// let nread = lib.symbols.recv_conn(resptr);
+
+Promise.all([(async () => {
+	let client = await lib.symbols.proc_rec(resptr);
+
+	while(client !== null) {
+		console.log("New connection");
+		await lib.symbols.proc_rec_streams(resptr, runtime, client)
+	// 	//start a new thread to handle the connection
+	// 	lib.symbols.proc_rec_streams(resptr, client);
+	// 	//
+	// 	console.log("Connection handled");
+
+	// 	// let mut buffer = vec![0; 65536].into_boxed_slice();
+	Promise.all([(async () => {
+		let buffer = new Uint8Array(65536);
+		let res = await lib.symbols.proc_recv_ch_datagram(resptr, client, buffer);
+		while (res > 0) {
+			const ress = buffer.subarray(0, res as number);
+			console.log(ress);
+			buffer = buffer.fill(0);
+			res = await lib.symbols.proc_recv_ch_datagram(resptr, client, buffer);
+		}
+	})()]);
+
+	// 	// const buffview = new Deno.UnsafePointerView(res!);
+	// 	// console.log(buffview.getBigInt64(0));
+		client = await lib.symbols.proc_rec(resptr);
+	}
+})()]);
 
 // setInterval(() => {
 //     console.log(ptrstate[0]);
