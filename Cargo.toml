@@ -17,3 +17,8 @@ smol = "1.3.0"
 tokio = { version = "1.28.1", features = ["rt", "rt-multi-thread", "macros"] }
 wtransport = "0.1.4"
 serde = { version = "1", features = ["derive"] }
+base64 = "0.21.4"
+rcgen = "0.11.1"
+ring = "0.16.20"
+time = "0.3.28"
+anyhow = "1.0.75"

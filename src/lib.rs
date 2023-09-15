@@ -1,13 +1,12 @@
 use client::ClientConn;
 use flume::Receiver;
 use flume::Sender;
-// use futures_util::{pin_mut, select, FutureExt};
+use once_cell::sync::Lazy;
+use wtransport::config::ServerConfigBuilder;
+use wtransport::config::WantsBindAddress;
 use std::time::Duration;
 use tokio::runtime::Runtime;
-// use wtransport::datagram::Datagram;
 use wtransport::endpoint;
-
-// use wtransport::endpoint::SessionRequest;
 use wtransport::tls::Certificate;
 use wtransport::Connection;
 use wtransport::Endpoint;
@@ -15,7 +14,7 @@ use wtransport::ServerConfig;
 
 mod client;
 mod executor;
-
+mod certificate;
 #[repr(C)]
 pub struct ErrorMessage {
     pub code: i32,
@@ -23,38 +22,40 @@ pub struct ErrorMessage {
 }
 
 pub struct WebTransport {
-    /// The innter Server object
     pub server: Option<Endpoint<endpoint::Server>>,
-    //
+
     conn_ch_sender: Option<Sender<Connection>>,
     conn_ch_receiver: Option<Receiver<Connection>>,
 
-	// datagram_ch_sender: Option<Sender<Datagram>>,
-	// datagram_ch_receiver: Option<Receiver<Datagram>>,
     pub state: Option<bool>,
 }
+///------------------------------------ code  msg buf  len
 static mut SEND_FN: Option<extern "C" fn(u32, *mut u8, u32)> = None;
 
+static mut RUNTIME: Lazy<Runtime> = Lazy::new(|| Runtime::new().unwrap());
+
 impl WebTransport {
-    pub(crate) fn new(
+
+    pub(crate) unsafe fn new(
         port: u16,
         sender_fn: Option<extern "C" fn(u32, *mut u8, u32)>,
-        _runtime: &mut Runtime,
+        config: ServerConfig
     ) -> Result<Self, u32> {
-        unsafe {
-            SEND_FN = sender_fn;
-        };
-        let _guard = _runtime.enter();
 
-        let config = ServerConfig::builder()
-            .with_bind_default(port)
-            .with_certificate(Certificate::load("cert.crt", "cert.key").unwrap())
-            .keep_alive_interval(Some(Duration::from_secs(1)))
-            .build();
+        SEND_FN = sender_fn;
+        
+        let _guard = RUNTIME.enter();
+
+        // let config = ServerConfig::builder()
+        //     .with_bind_config(wtransport::config::IpBindConfig::InAddrAnyDual, port)
+        //     .with_certificate(Certificate::load("cert.pem", "cert.pem").unwrap())
+        //     .keep_alive_interval(Some(Duration::from_secs(1)))
+        //     .allow_migration(true)
+        //     .max_idle_timeout(Some(Duration::from_secs(20)));
+        //     .build();
 
         let (conn_sender, conn_reciever) = flume::unbounded();
-        // let (datagram_sender, datagram_receiver) = flume::unbounded();
-
+        //get the ref of config
         let server = match Endpoint::server(config) {
             Ok(server) => server,
             Err(e) => {
@@ -62,26 +63,21 @@ impl WebTransport {
                 return Err(1);
             }
         };
-        //
-        // self.handle_sess_in(_runtime);
-        //
         Ok(Self {
             server: Some(server),
             state: Some(true),
             conn_ch_sender: Some(conn_sender),
             conn_ch_receiver: Some(conn_reciever),
-            // datagram_ch_sender: Some(datagram_sender),
-            // datagram_ch_receiver: Some(datagram_receiver),
         })
     }
 
-    pub(crate) unsafe fn handle_sess_in(&'static mut self, runtime: *mut Runtime) {
+    pub(crate) unsafe fn handle_sess_in(&'static mut self) {
         println!("Waiting for session request...");
-        let rt = runtime.as_mut().unwrap();
+        // let rt = runtime.as_mut().unwrap();
 		// let _ = rt.enter();
-		let handle = rt.handle().clone();
+		let handle = RUNTIME.handle().clone();
 		
-        rt.spawn(async move {
+        executor::spawn(async move {
 			for id in 0.. {
 				let sender = self.conn_ch_sender.as_ref().unwrap();
 				let incoming_session = self.server.as_mut().unwrap().accept().await;
@@ -102,104 +98,64 @@ impl WebTransport {
 					// self.conn_ch_sender.as_mut().unwrap().send(connection).unwrap();
 				});
 			}
-            // for _ in 0.. {
-            //     // let receiver = self.conn_ch_receiver.as_mut().unwrap();
-            //     let sender = self.conn_ch_sender.as_ref().unwrap();
-            //     let next = {
-            //         // let insess_receiver = receiver.recv_async().fuse();
-            //         let incoming_session = self.server.as_mut().unwrap().accept().fuse();
-
-            //         // pin_mut!(sender);
-            //         pin_mut!(incoming_session);
-            //         select! {
-            //             result = incoming_session => {
-            //                 let sess_req = result.await;
-            //                 Next::NewSessionRequest(sess_req)
-            //             }
-            //         }
-            //     };
-            //     match next {
-            //         Next::NewSessionRequest(sessreq) => {
-            //             match sessreq {
-            //                 Ok(sessreq) => {
-            //                     println!(
-            //                         "Received Session Request from client: {:?}",
-            //                         sessreq.authority()
-            //                     );
-            //                     // self.handle_session_impl(sessreq.accept().await);
-            //                     let conn = sessreq.accept().await.unwrap();
-            //                     println!(
-            //                         "Accepted session request from client: {:?}",
-            //                         conn.remote_address()
-            //                     );
-
-            //                     let _ = sender.send(conn);
-            //                     // self.conn_ch_sender.as_mut().unwrap().send(conn).unwrap();
-            //                 }
-            //                 Err(e) => {
-            //                     println!("Error accepting session request: {:?}", e);
-            //                 }
-            //             }
-            //             // insess_sender.send_async(sessreq).await.unwrap();
-            //         }
-            //     }
-            // }
-        });
+        }).detach();
     }
 }
 
+///
 #[no_mangle]
-pub extern "C" fn init_runtime() -> *mut Runtime {
-    Box::into_raw(Box::new(Runtime::new().unwrap()))
+pub unsafe extern "C" fn proc_create_config(port: u16, timeout: u64, keepalive: u64, migration: bool, ) -> *mut ServerConfig {
+    // let config = ServerConfig::builder();
+    let config = ServerConfig::builder()
+        .with_bind_config(wtransport::config::IpBindConfig::InAddrAnyDual, port)
+        .with_certificate(Certificate::load("cert.pem", "cert.pem").unwrap())
+        .keep_alive_interval(Some(Duration::from_secs(keepalive)))
+        .max_idle_timeout(Some(Duration::from_secs(timeout))).unwrap()
+        .allow_migration(migration)
+        .build();
+    let config_ptr = Box::into_raw(Box::new(config));
+    config_ptr
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn start(
+pub unsafe extern "C" fn proc_init(
+    port: u16,
     send_func: Option<extern "C" fn(u32, *mut u8, u32)>,
-    res: *mut u32,
-    rt_ptr: *mut Runtime,
+    configptr: *mut ServerConfig 
 ) -> *mut WebTransport {
-    assert!(!rt_ptr.is_null());
-    assert!(!res.is_null());
+    assert!(!send_func.is_none());
+    assert!(port > 0);
+    let config = &mut *configptr;
 
-    let _runtime = &mut *rt_ptr;
-    let server = WebTransport::new(4433, send_func, _runtime);
+    let server = WebTransport::new(port, send_func, config);
     match server {
         Ok(server) => {
             let server_ptr = Box::into_raw(Box::new(server));
-            *res = 0;
             server_ptr
         }
         Err(_) => {
-            *res = 2;
-            std::ptr::null_mut()
+            panic!("Error creating server")
         }
     }
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn handle_session(server_ptr: *mut WebTransport, runtime: *mut Runtime) {
+pub unsafe extern "C" fn proc_listen(server_ptr: *mut WebTransport) {
     assert!(!server_ptr.is_null());
-    assert!(!runtime.is_null());
     let server = &mut *server_ptr;
-    let _runtime = &mut *runtime;
-    server.handle_sess_in(_runtime);
+    server.handle_sess_in();
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn proc_rec(srv: *mut WebTransport) -> *mut ClientConn {
+pub unsafe extern "C" fn proc_newconn(srv: *mut WebTransport) -> *mut ClientConn {
     assert!(!srv.is_null());
 
     let server = &mut *srv;
-    println!("DBG: RECEIVER READY");
 
     match server.conn_ch_receiver.as_ref().unwrap().recv() {
         Ok(conn) => {
-            // println!("New client : {:?}", conn.remote_address());
-            // let connptr = Box::into_raw(Box::new(conn));
             let client_conn = ClientConn::new(conn);
             let clientptr = Box::into_raw(Box::new(client_conn));
-            // Box::into_raw(Box::new(conn))
 			clientptr
         }
         _ => {
@@ -208,26 +164,25 @@ pub unsafe extern "C" fn proc_rec(srv: *mut WebTransport) -> *mut ClientConn {
     }
 }
 
-//create a method that creates a unbound channel and returns a pointer to the sender/receiver pair to the FFI
-
 #[no_mangle]
-pub unsafe extern "C" fn proc_rec_streams(srv: *mut WebTransport, rt: *mut Runtime, clientptr: *mut ClientConn) {
+pub unsafe extern "C" fn proc_init_client_streams(srv: *mut WebTransport, clientptr: *mut ClientConn, _buffer : *mut u8) {
     assert!(!clientptr.is_null());
 	assert!(!srv.is_null());
+
     let client = &mut *clientptr;
 	let _server = &mut *srv;
-	let _runtime = &mut *rt;
-    // let connection = client.get_conn();
+
     let sender = client.datagram_ch_sender.clone();
 
-    println!("CONN RECEIVER PROC SET & READY");
-	// let rthandle = _runtime.handle();
-    _runtime.spawn(async move {
-		let mut buffer = vec![0; 65536].into_boxed_slice();
+    println!("DBG: CONN RECEIVER PROC SET & READY");
+	// let rthandle = RUNTIME.handle();
+    // let mut buffer =::std::slice::from_raw_parts_mut(buffer, 65536);
 
+    executor::spawn(async move {
+		let mut buffer = vec![0; 65536].into_boxed_slice();
+        //use the buffer from the args and set it to a box slice
+        let _ = RUNTIME.enter();
         loop {
-            // let sender = sender;
-            // println!("Waiting for datagram from client");
             tokio::select! {
                 stream = client.conn.accept_bi() => {
                     match stream {
@@ -241,14 +196,11 @@ pub unsafe extern "C" fn proc_rec_streams(srv: *mut WebTransport, rt: *mut Runti
 
                             stream.0.write_all(b"ACK").await.unwrap();
                         },
-                        _ => {
-                            
-                        }
+                        _ => {}
                     };
 
                 }
                 stream = client.conn.accept_uni() => {
-                    // let mut stream = stream;
                     match stream {
                         Ok(mut stream) => {
                             println!("Accepted UNI stream");
@@ -264,40 +216,34 @@ pub unsafe extern "C" fn proc_rec_streams(srv: *mut WebTransport, rt: *mut Runti
                             let mut stream = client.conn.open_uni().await.unwrap().await.unwrap();
                             stream.write_all(b"ACK").await.unwrap();
                         },
-                        _ => {
-                            // println!("Error accepting UNI stream: {:?}", e);
-                        }
+                        _ => {}
                     }
 
                 }
-                    dgram = client.conn.receive_datagram() => {
-                        match dgram {
-                            Ok(dgram) => {
-
-                                println!("Received datagram from client");
-                                sender.send(dgram).unwrap();
-                                // let str_data = std::str::from_utf8(&dgram).unwrap();
-                                // println!("Received (dgram) '{str_data}' from client");
-                                client.conn.send_datagram(b"ACK").unwrap();
-                            },
-                            _ => {
-                                // break;
-                                // println!("Error receiving datagram");
-                            }
-                        }
-                    },
+                stream = client.conn.receive_datagram() => {
+                    match stream {
+                        Ok(dgram) => {
+                            let _ = sender.send_async(dgram).await;
+                            //TODO(hironichu): Remove this debug line 
+                            client.conn.send_datagram(b"ACK").unwrap();
+                        },
+                        _ => {}
+                    }
+                },
 
             }
         }
-    });//.detach();
+    }).detach();
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn proc_recv_ch_datagram(srv: *mut WebTransport, clientptr: *mut ClientConn, buff: *mut u8) -> usize {
+pub unsafe extern "C" fn proc_recv_datagram(srv: *mut WebTransport, clientptr: *mut ClientConn, buff: *mut u8) -> usize {
     assert!(!clientptr.is_null());
 	assert!(!srv.is_null());
+    
     let client = &mut *clientptr;
 	let _server = &mut *srv;
+
     match client.datagram_ch_receiver.recv() {
         Ok(dgram) => {
             ::std::slice::from_raw_parts_mut(buff, dgram.len()).copy_from_slice(&dgram);
@@ -308,8 +254,53 @@ pub unsafe extern "C" fn proc_recv_ch_datagram(srv: *mut WebTransport, clientptr
 }
 
 #[no_mangle]
+pub unsafe extern "C" fn proc_send_datagram(srv: *mut WebTransport, clientptr: *mut ClientConn, buf: *const u8, buflen: u32) {
+    assert!(!clientptr.is_null());
+	assert!(!srv.is_null());
+
+    let client = &mut *clientptr;
+    let _server = &mut *srv;
+    let buf = ::std::slice::from_raw_parts(buf, buflen as usize);
+
+    client.conn.send_datagram(buf).unwrap(); //TODO: Handle error
+}
+
+
+#[no_mangle]
 pub unsafe extern "C" fn test_proc(client: *mut ClientConn) {
     assert!(!client.is_null());
     let client = &mut *client;
     println!("TEST PROC {} ", client.conn.remote_address());
 }
+
+
+#[no_mangle]
+pub extern "C" fn proc_gencert(buffpath: *mut u8) -> usize {
+    //get the underlying buffer and use it to return the path to the cert
+    let path = unsafe { std::ffi::CStr::from_ptr(buffpath as *const i8) };
+    let path = path.to_str().unwrap();
+    let cert = certificate::generate_certificate("localhost").unwrap();
+    std::fs::write(format!("{}/cert.pem", path), cert.certificate).unwrap();
+    std::fs::write(format!("{}/key.pem", path), cert.key).unwrap();
+    path.len()
+}
+
+//create a free method that frees the memory of every pointer that was allocated
+#[no_mangle]
+pub unsafe extern "C" fn free_webtransport(_: *mut WebTransport) {}
+
+#[no_mangle]
+pub unsafe extern "C" fn free_clientconn(_: *mut ClientConn) {}
+
+#[no_mangle]
+pub unsafe extern "C" fn free_runtime(_: *mut Runtime) {}
+
+//free all above once
+#[no_mangle]
+pub unsafe extern "C" fn free_all(
+    _a: *mut WebTransport,
+    _b: *mut ClientConn,
+    _c: *mut Runtime,
+) {}
+
+
