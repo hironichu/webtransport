@@ -1,8 +1,8 @@
-use flume::{Sender, Receiver};
+use std::{path::Path, time::Duration};
 use tokio::runtime::Runtime;
-use wtransport::{Connection, datagram::Datagram, Endpoint, endpoint, ClientConfig};
+use wtransport::{ Endpoint, endpoint, ClientConfig, tls::Certificate};
 
-use crate::{RUNTIME, CONN_FN, SEND_FN, connection::Conn};
+use crate::{RUNTIME, SEND_FN, connection::Conn};
 
 pub struct WebTransportClient {
     pub client: Option<Endpoint<endpoint::Client>>,
@@ -71,6 +71,55 @@ impl WebTransportClient {
     //         }
     //     });
     // }
+}
+
+
+#[no_mangle]
+pub unsafe extern "C" fn proc_client_init(
+    send_func: Option<extern "C" fn(u32, *mut u8, u32)>,
+    keepalive: u64,
+    timeout: u64,
+    cert_path: *const u8,
+    cert_path_len: usize,
+    key_path: *const u8,
+    key_path_len: usize,
+) -> *mut WebTransportClient {
+    assert!(!send_func.is_none());
+
+    let cert_path = ::std::slice::from_raw_parts(cert_path, cert_path_len);
+    let key_path = ::std::slice::from_raw_parts(key_path, key_path_len);
+    let cert_path = Path::new(std::str::from_utf8(cert_path).unwrap());
+    let key_path = Path::new(std::str::from_utf8(key_path).unwrap());
+
+    let _certificates = Certificate::load(cert_path, key_path).unwrap();
+
+    let keepalive = if keepalive == 0 {
+        None
+    } else {
+        Some(Duration::from_secs(keepalive))
+    };
+	let timeout = if timeout == 0 {
+		None
+	} else {
+		Some(Duration::from_secs(timeout))
+	};
+    //print the paths for debug
+    let config = ClientConfig::builder()
+        .with_bind_config(wtransport::config::IpBindConfig::InAddrAnyDual)
+		.with_native_certs()
+		.keep_alive_interval(keepalive)
+		.max_idle_timeout(timeout).unwrap()
+        .build();
+    let server = WebTransportClient::new(send_func, config);
+    match server {
+        Ok(server) => {
+            let server_ptr = Box::into_raw(Box::new(server));
+            server_ptr
+        }
+        Err(_) => {
+            panic!("Error creating server")
+        }
+    }
 }
 
 #[no_mangle]

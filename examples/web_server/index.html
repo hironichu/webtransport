@@ -4,10 +4,28 @@
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title>Document</title>
+	<title>DEMO WEBTRANSPORT</title>
+	<style>
+		body {
+			background-color: #1d1d1e;
+			color: #fff;
+			font-family: monospace;
+		}
+
+		h1 {
+			text-align: center;
+		}
+
+		h2 {
+			text-align: center;
+		}
+	</style>
 </head>
 
 <body>
+	<h1>DEMO WEBTRANSPORT</h1>
+	<h2>Server IP : HOST_IP</h2>
+	<!-- TBA Stats -->
 	<script type="module">
 		const decoder = new TextDecoder();
 		async function readData(readable) {
@@ -17,15 +35,15 @@
 				if (done) {
 					break;
 				}
-				// // value is a Uint8Array.
 				console.log(decoder.decode(value));
 			}
 		}
 
 		window.serveurDEMO = null;
 		window.writeDDBN = null;
-		const webtransport = new WebTransport('https://localhost:4433/', {
+		const webtransport = new WebTransport('https://HOST_IP:4433/', {
 			congestionControl: "throughput",
+			allowPooling: true,
 			serverCertificateHashes: [{
 				algorithm: "sha-256",
 				value: new Uint8Array(CERT_HASH)
@@ -37,53 +55,23 @@
 			console.log("EVENT : ", event);
 		}
 		try {
-			// const stream = await webtransport.createBidirectionalStream();
 			const writable = await webtransport.datagrams.writable;
 			const readable = await webtransport.datagrams.readable;
 			window.writeDDBN = await webtransport.datagrams.writable.getWriter();
-			// const readable = streams.readable.getReader();
-			//send Hello world
-			// await writeable.write(new TextEncoder().encode("Hello world"));
-			// while(1) {
 			readData(readable);
 			let int2 = 0;
 			const encoder = new TextEncoder();
 			console.log("start sending")
-			performance.mark('start-sending');
 			while(1) {
 			    if (int2 === 100_000) {
-					performance.mark('start-sending');
-					performance.measure('result-sending', 'start-sending', 'start-sending');
-					const measure = performance.getEntriesByName('result-sending')[0];
-					//get the duration in seconds
-					const duration = measure.duration / 1000;
-					console.log("duration : ", duration)
 			        break ;
 			    }
-				window.writeDDBN.write(encoder.encode(int2++));
+				await window.writeDDBN.write(encoder.encode(int2++));
 			}
 
 		} catch (e) {
 			console.error(e);
 		}
-		// const writer = webtransport.datagrams.writable.getWriter();
-		// // // while(1) {
-		//     let int2 = 0;
-		// //     performance.mark('start');
-		// //     // while(1) {
-		// //     //     if (int2 === 1) {
-		// //     //         break ;
-		// //     //     }
-		//         writer.write(new TextEncoder().encode("hello " + int2++));
-		//         // await new Promise(resolve => setTimeout(resolve, 1));
-		//     // }
-		//     performance.mark('end');
-		//     performance.measure('test', 'start', 'end');
-		//     const measure = performance.getEntriesByName('test')[0];
-		//     //get the duration in seconds
-		//     const duration = measure.duration / 1000;
-		//     console.log(duration)
-		// }
 	</script>
 </body>
 

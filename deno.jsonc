@@ -1,12 +1,12 @@
 {
     "tasks": {
         "example:web": "deno run -A ./examples/web_server/web.js",
-		"example:server": "deno run -A --unstable ./examples/deno/wt_server.ts",
+        "example:server": "deno run -A --unstable ./examples/deno/wt_server.ts",
         "example:client": "deno run -A --unstable ./examples/deno/wt_client.ts"
     },
     "compilerOptions": {
         "checkJs": true,
-		"strict": true
+        "strict": true
     },
     "fmt": {
         "exclude": [

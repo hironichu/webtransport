@@ -71,6 +71,8 @@ impl WebTransportServer {
         });
     }
 }
+
+
 #[no_mangle]
 pub unsafe extern "C" fn proc_server_init(
     send_func: Option<extern "C" fn(u32, *mut u8, u32)>,
@@ -143,9 +145,8 @@ pub unsafe extern "C" fn proc_server_init_streams(
     let sender = client.datagram_ch_sender.clone();
 
     client.buffer = Some(from_raw_parts_mut(buffer, buflen));
-
+	
     executor::spawn(async move {
-        // let _  = RUNTIME.enter();
         loop {
             tokio::select! {
                 _ = client.conn.accept_bi() => {
@@ -164,11 +165,11 @@ pub unsafe extern "C" fn proc_server_init_streams(
                 // 			client.conn.closed().await;
                 // 		}
                 //     };
-                    client.conn.closed().await;
+                    return client.conn.closed().await;
                 }
                 _ = client.conn.accept_uni() => {
                     //close the connection until we implement the uni stream
-                    client.conn.closed().await;
+                    return client.conn.closed().await;
                 //     match stream {
                 //         Ok(mut stream) => {
                 //             println!("Accepted UNI stream");
@@ -192,20 +193,18 @@ pub unsafe extern "C" fn proc_server_init_streams(
                 }
                 stream = client.conn.receive_datagram() => {
                     match stream {
-                        //write dgram into denoBUF and send the copied bytes len to deno
-                        Ok(dgram) => {
-                            sender.send(dgram).unwrap();
-                        },
+                        Ok(dgram) => sender.send_async(dgram).await.unwrap(),
                         _ => {
-                            //
+							client.conn.closed().await;
+							//TODO(hironichu): Send action to Deno to free the pointer and buffer
+							return ;
                         }
                     }
                 },
 
             }
         }
-    })
-    .detach();
+    }).detach();
 }
 
 //free all above once

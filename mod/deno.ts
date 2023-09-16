@@ -34,7 +34,7 @@ const sender = new Deno.UnsafeCallback(
 sender.ref();
 let serverPTR;
 let new_connection;
-const decoder = new TextDecoder();
+const _decoder = new TextDecoder();
 try {
     const certpath = encodeBuffPtr("./certs/cert.pem");
     const keypath = encodeBuffPtr("./certs/key.pem");
@@ -43,8 +43,8 @@ try {
         sender.pointer,
         4433,
         true,
-        0,
-        100,
+        3,
+        20,
         certpath[0],
         certpath[1],
         keypath[0],
