@@ -2,5 +2,8 @@
     "deno.enable": true,
     "deno.lint": true,
     "deno.unstable": true,
-    "deno.cacheOnSave": true
+	"deno.cacheOnSave": true,
+	"rust-analyzer.linkedProjects": [
+		".\\Cargo.toml"
+	]
 }

@@ -1,23 +1,77 @@
 use flume::{Sender, Receiver};
-use wtransport::{Connection, datagram::Datagram};
+use tokio::runtime::Runtime;
+use wtransport::{Connection, datagram::Datagram, Endpoint, endpoint, ClientConfig};
 
+use crate::{RUNTIME, CONN_FN, SEND_FN, connection::Conn};
 
-pub struct ClientConn {
-	pub conn: Connection,
-	pub buffer: Option<&'static mut [u8]>,
-	pub datagram_ch_sender: Sender<Datagram>,
-	pub datagram_ch_receiver: Receiver<Datagram>,
+pub struct WebTransportClient {
+    pub client: Option<Endpoint<endpoint::Client>>,
+    pub conn_cb: Option<extern "C" fn(*mut Conn)>,
+    pub state: Option<bool>,
 }
 
 
-impl ClientConn {
-	pub(crate) fn new(conn: Connection) -> Self {
-		let (sender, receiver) = flume::unbounded();
-		Self {
-			conn,
-			buffer: None,
-			datagram_ch_sender: sender,
-			datagram_ch_receiver: receiver,
-		}
-	}
+impl WebTransportClient {
+    pub(crate) unsafe fn new(
+        sender_fn: Option<extern "C" fn(u32, *mut u8, u32)>,
+        config: ClientConfig,
+    ) -> Result<Self, u32> {
+        SEND_FN = sender_fn;
+        let _guard = RUNTIME.enter();
+
+        let client = match Endpoint::client(config) {
+            Ok(server) => server,
+            Err(e) => {
+                println!("Error creating server: {:?}", e);
+                return Err(1);
+            }
+        };
+        Ok(Self {
+            conn_cb: None,
+            client: Some(client),
+            state: Some(true),
+        })
+    }
+
+    // pub(crate) unsafe fn handle_sess_in(&'static mut self) {
+    //     RUNTIME.spawn(async move {
+    //         loop {
+    //             let incoming_session = self.client.as_mut().unwrap().accept().await;
+
+    //             let session_request = incoming_session.await;
+
+    //             let accepted_session = match session_request {
+    //                 Ok(session_request) => session_request,
+    //                 Err(e) => {
+    //                     //TODO(hironichu): Handle error with callback SENDER_FN
+    //                     println!("Error accepting session: {:?}", e);
+    //                     return;
+    //                 }
+    //             };
+    //             // accepted_session.
+    //             //TODO(hironichu): We should handle every step of the handshake with callbacks.
+
+    //             // println!(
+    //             // 	"DBG: New session: Authority: '{}', Path: '{}'",
+    //             // 	accepted_session.authority(),
+    //             // 	accepted_session.path()
+    //             // );
+    //             match accepted_session.accept().await {
+    //                 Ok(conn) => {
+    //                     // println!("DBG: Sending connection to channel.");
+    //                     let client = ServerConn::new(conn);
+    //                     let client_ptr = Box::into_raw(Box::new(client));
+    //                     assert!(!CONN_FN.is_none()); //TODO(hironichu): Handle this better.
+    //                     CONN_FN.unwrap()(client_ptr);
+    //                 }
+    //                 _ => {
+    //                     println!("Error accepting connection");
+    //                 }
+    //             }
+    //         }
+    //     });
+    // }
 }
+
+#[no_mangle]
+pub unsafe extern "C" fn free_all_client(_a: *mut WebTransportClient, _b: *mut Conn, _c: *mut Runtime) {}

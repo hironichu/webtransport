@@ -9,6 +9,7 @@
 
 <body>
 	<script type="module">
+		const decoder = new TextDecoder();
 		async function readData(readable) {
 			const reader = readable.getReader();
 			while (true) {
@@ -17,7 +18,7 @@
 					break;
 				}
 				// // value is a Uint8Array.
-				// console.log(value);
+				console.log(decoder.decode(value));
 			}
 		}
 
