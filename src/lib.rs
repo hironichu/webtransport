@@ -59,12 +59,12 @@ impl WebTransport {
 
 		// let handle = RUNTIME.handle();
 		
-        executor::spawn(async move {
+        RUNTIME.spawn(async move {
 			// println!("Started thread");
 			loop {
 				let incoming_session = self.server.as_mut().unwrap().accept().await;
 
-				RUNTIME.spawn(async move {
+				// RUNTIME.spawn(async move {
 					let _buffer = vec![0; 65536].into_boxed_slice();
 					// println!("DBG: Waiting for session request...");
 					let session_request = incoming_session.await;
@@ -94,9 +94,9 @@ impl WebTransport {
 						}
 					}
 
-				});
+				// });
 			}
-        }).detach();
+        });//.detach();
     }
 }
 
@@ -184,62 +184,69 @@ pub unsafe extern "C" fn proc_init_client_streams(srv: *mut WebTransport, client
 	// let rthandle = RUNTIME.handle();
     // let mut buffer =::std::slice::from_raw_parts_mut(buffer, 65536);
 
-    executor::spawn(async move {
+    RUNTIME.spawn(async move {
 		let mut buffer = vec![0; 65536].into_boxed_slice();
         //use the buffer from the args and set it to a box slice
-        let _ = RUNTIME.enter();
+        // let _ = RUNTIME.enter();
         loop {
             tokio::select! {
-                stream = client.conn.accept_bi() => {
-                    match stream {
-                        Ok(mut stream) => {
+                // stream = client.conn.accept_bi() => {
+                //     match stream {
+                //         Ok(mut stream) => {
 
-                            println!("Accepted BI stream");
-                            let bytes_read = stream.1.read(&mut buffer).await.unwrap().unwrap();
-                            let str_data = std::str::from_utf8(&buffer[..bytes_read]).unwrap();
+                //             println!("Accepted BI stream");
+                //             let bytes_read = stream.1.read(&mut buffer).await.unwrap().unwrap();
+                //             let str_data = std::str::from_utf8(&buffer[..bytes_read]).unwrap();
 
-                            println!("Received (bi) '{str_data}' from client");
+                //             println!("Received (bi) '{str_data}' from client");
 
-                            stream.0.write_all(b"ACK").await.unwrap();
-                        },
-                        _ => {}
-                    };
+                //             stream.0.write_all(b"ACK").await.unwrap();
+                //         },
+                //         _ => {
+				// 			client.conn.closed().await;
+				// 		}
+                //     };
 
-                }
-                stream = client.conn.accept_uni() => {
-                    match stream {
-                        Ok(mut stream) => {
-                            println!("Accepted UNI stream");
-                            let bytes_read = match stream.read(&mut buffer).await.unwrap() {
-                                Some(bytes_read) => bytes_read,
-                                None => continue,
-                            };
+                // }
+                // stream = client.conn.accept_uni() => {
+                //     match stream {
+                //         Ok(mut stream) => {
+                //             println!("Accepted UNI stream");
+                //             let bytes_read = match stream.read(&mut buffer).await.unwrap() {
+                //                 Some(bytes_read) => bytes_read,
+                //                 None => continue,
+                //             };
 
-                            let str_data = std::str::from_utf8(&buffer[..bytes_read]).unwrap();
+                //             let str_data = std::str::from_utf8(&buffer[..bytes_read]).unwrap();
 
-                            println!("Received (uni) '{str_data}' from client");
+                //             println!("Received (uni) '{str_data}' from client");
 
-                            let mut stream = client.conn.open_uni().await.unwrap().await.unwrap();
-                            stream.write_all(b"ACK").await.unwrap();
-                        },
-                        _ => {}
-                    }
+                //             let mut stream = client.conn.open_uni().await.unwrap().await.unwrap();
+                //             stream.write_all(b"ACK").await.unwrap();
+                //         },
+                //         _ => {
+				// 			client.conn.closed().await;
+				// 		}
+                //     }
 
-                }
+                // }
                 stream = client.conn.receive_datagram() => {
                     match stream {
                         Ok(dgram) => {
+							println!("Received datagram");
                             let _ = sender.send(dgram);
                             // //TODO(hironichu): Remove this debug line 
                             // client.conn.send_datagram(b"ACK").unwrap();
                         },
-                        _ => {}
+                        _ => {
+							break;
+						}
                     }
                 },
 
             }
         }
-    }).detach();
+    });//.detach();
 }
 
 #[no_mangle]

@@ -60,22 +60,22 @@ try {
 			performance.clearMeasures("DENO");
 			while (res > 0) {
 				const ress = buffer.subarray(0, res as number);
-				console.log(ress)
-				const msg = parseInt(decoder.decode(ress));
-				if (msg === 0) {
-					console.log("DENO: Start timing");
-					performance.mark("start");
-				}
-				if (msg === 49999) {
-					console.log("DENO: End timing");
-					performance.mark("end");
-					performance.measure("DENO", "start", "end");
-					const measure = performance.getEntriesByName("DENO")[0];
-					console.log("Last message : " + msg);
-					console.log(measure);
-
-				}
-				lib.symbols.proc_send_datagram(serverPTR!, client, ress, res);
+				// console.log(ress)
+				// const msg = parseInt(decoder.decode(ress));
+				// if (msg === 0) {
+				// 	console.log("DENO: Start timing");
+				// 	performance.mark("start");
+				// }
+				// if (msg === 49999) {
+				// 	console.log("DENO: End timing");
+				// 	performance.mark("end");
+				// 	performance.measure("DENO", "start", "end");
+				// 	const measure = performance.getEntriesByName("DENO")[0];
+				// 	console.log("Last message : " + msg);
+				// 	console.log(measure);
+				// }
+				console.log("MSG : " +decoder.decode(ress));
+				// lib.symbols.proc_send_datagram(serverPTR!, client, ress, res);
 				res = await lib.symbols.proc_recv_datagram(serverPTR!, client, buffer);
 			}
 		})()]);

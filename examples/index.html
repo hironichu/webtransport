@@ -50,18 +50,18 @@
 			const encoder = new TextEncoder();
 			console.log("start sending")
 			performance.mark('start-sending');
-			// while(1) {
-			//     if (int2 === 50000) {
-			// 		performance.mark('start-sending');
-			// 		performance.measure('result-sending', 'start-sending', 'start-sending');
-			// 		const measure = performance.getEntriesByName('result-sending')[0];
-			// 		//get the duration in seconds
-			// 		const duration = measure.duration / 1000;
-			// 		console.log("duration : ", duration)
-			//         break ;
-			//     }
-			// 	window.writeDDBN.write(encoder.encode(int2++));
-			// }
+			while(1) {
+			    if (int2 === 50000) {
+					performance.mark('start-sending');
+					performance.measure('result-sending', 'start-sending', 'start-sending');
+					const measure = performance.getEntriesByName('result-sending')[0];
+					//get the duration in seconds
+					const duration = measure.duration / 1000;
+					console.log("duration : ", duration)
+			        break ;
+			    }
+				window.writeDDBN.write(encoder.encode(int2++));
+			}
 
 		} catch (e) {
 			console.error(e);
