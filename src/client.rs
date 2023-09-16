@@ -4,6 +4,7 @@ use wtransport::{Connection, datagram::Datagram};
 
 pub struct ClientConn {
 	pub conn: Connection,
+	pub buffer: Option<&'static mut [u8]>,
 	pub datagram_ch_sender: Sender<Datagram>,
 	pub datagram_ch_receiver: Receiver<Datagram>,
 }
@@ -14,6 +15,7 @@ impl ClientConn {
 		let (sender, receiver) = flume::unbounded();
 		Self {
 			conn,
+			buffer: None,
 			datagram_ch_sender: sender,
 			datagram_ch_receiver: receiver,
 		}

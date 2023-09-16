@@ -15,12 +15,12 @@ const symbols = {
     //     result: "void",
     // },
 	proc_init_client_streams: {
-		parameters: ["pointer", "pointer", "buffer"],
+		parameters: ["pointer", "pointer", "buffer", "usize"],
 		result: "void",
 		nonblocking: true,
 	},
 	proc_recv_datagram: {
-		parameters: ["pointer", "pointer", "buffer"],
+		parameters: ["pointer", "pointer"],
 		result: "usize",
 		nonblocking: true,
 	},

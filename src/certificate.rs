@@ -1,9 +1,12 @@
 use anyhow::Result;
 use base64::engine::general_purpose::STANDARD as Base64Engine;
 use base64::Engine;
+use rcgen::BasicConstraints;
 use rcgen::CertificateParams;
 use rcgen::DistinguishedName;
 use rcgen::DnType;
+use rcgen::ExtendedKeyUsagePurpose;
+use rcgen::IsCa;
 use rcgen::KeyPair;
 use rcgen::PKCS_ECDSA_P256_SHA256;
 use ring::digest::digest;
@@ -37,11 +40,18 @@ pub fn generate_certificate<S: AsRef<str>>(common_name: S) -> Result<SelfCertifi
     cert_params.alg = &PKCS_ECDSA_P256_SHA256;
     cert_params.key_pair = Some(keypair);
     cert_params.not_before = OffsetDateTime::now_utc()
-        .checked_sub(Duration::days(5))
+        .checked_sub(Duration::days(2))
         .unwrap();
     cert_params.not_after = OffsetDateTime::now_utc()
-        .checked_add(Duration::days(5))
+        .checked_add(Duration::days(2))
         .unwrap();
+	cert_params.extended_key_usages = vec![ExtendedKeyUsagePurpose::ServerAuth, ExtendedKeyUsagePurpose::ClientAuth];
+    cert_params.key_usages = vec![
+		rcgen::KeyUsagePurpose::DigitalSignature,
+		rcgen::KeyUsagePurpose::KeyCertSign,
+	];
+	cert_params.is_ca = IsCa::Ca(BasicConstraints::Unconstrained);
+	cert_params.subject_alt_names = vec![rcgen::SanType::DnsName(common_name.as_ref().to_string())];
 
     let certificate = rcgen::Certificate::from_params(cert_params)?;
 
@@ -51,3 +61,4 @@ pub fn generate_certificate<S: AsRef<str>>(common_name: S) -> Result<SelfCertifi
         fingerprint,
     })
 }
+

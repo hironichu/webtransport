@@ -24,11 +24,10 @@
 		window.serveurDEMO = null;
 		window.writeDDBN = null;
 		const webtransport = new WebTransport('https://localhost:4433/', {
-			congestionControl: "low-latency",
-			"requireUnreliable": true,
-			"serverCertificateHashes": [{
-				"algorithm": "sha-256",
-				"value": new Uint8Array([0x7c, 0xda, 0x57, 0x35, 0xc8, 0xe1, 0x4c, 0x53, 0x2b, 0x9a, 0xd6, 0xf7, 0x6e, 0xe6, 0x54, 0x54, 0x39, 0xa8, 0x6a, 0xa3, 0xd7, 0xd7, 0xc6, 0x3, 0x93, 0xf7, 0xad, 0x7a, 0xc3, 0xcc, 0x32, 0x98])
+			congestionControl: "throughput",
+			serverCertificateHashes: [{
+				algorithm: "sha-256",
+				value: new Uint8Array(CERT_HASH)
 			}]
 		})
 		await webtransport.ready;
@@ -51,7 +50,7 @@
 			console.log("start sending")
 			performance.mark('start-sending');
 			while(1) {
-			    if (int2 === 50000) {
+			    if (int2 === 100_000) {
 					performance.mark('start-sending');
 					performance.measure('result-sending', 'start-sending', 'start-sending');
 					const measure = performance.getEntriesByName('result-sending')[0];

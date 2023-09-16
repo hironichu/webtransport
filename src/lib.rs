@@ -171,7 +171,7 @@ pub unsafe extern "C" fn proc_listen(server_ptr: *mut WebTransport, cb: Option<e
 // }
 
 #[no_mangle]
-pub unsafe extern "C" fn proc_init_client_streams(srv: *mut WebTransport, clientptr: *mut ClientConn, _buffer : *mut u8) {
+pub unsafe extern "C" fn proc_init_client_streams(srv: *mut WebTransport, clientptr: *mut ClientConn, _buffer : *mut u8, _buflen: usize) {
     assert!(!clientptr.is_null());
 	assert!(!srv.is_null());
 
@@ -180,17 +180,13 @@ pub unsafe extern "C" fn proc_init_client_streams(srv: *mut WebTransport, client
 
     let sender = client.datagram_ch_sender.clone();
 
-    // println!("DBG: CONN RECEIVER PROC SET & READY");
-	// let rthandle = RUNTIME.handle();
-    // let mut buffer =::std::slice::from_raw_parts_mut(buffer, 65536);
+	client.buffer = Some(::std::slice::from_raw_parts_mut(_buffer, _buflen));
 
     RUNTIME.spawn(async move {
-		let mut buffer = vec![0; 65536].into_boxed_slice();
-        //use the buffer from the args and set it to a box slice
-        // let _ = RUNTIME.enter();
+
         loop {
             tokio::select! {
-                // stream = client.conn.accept_bi() => {
+                _ = client.conn.accept_bi() => {
                 //     match stream {
                 //         Ok(mut stream) => {
 
@@ -206,9 +202,11 @@ pub unsafe extern "C" fn proc_init_client_streams(srv: *mut WebTransport, client
 				// 			client.conn.closed().await;
 				// 		}
                 //     };
-
-                // }
-                // stream = client.conn.accept_uni() => {
+					client.conn.closed().await;
+                }
+                _ = client.conn.accept_uni() => {
+					//close the connection until we implement the uni stream
+					client.conn.closed().await;
                 //     match stream {
                 //         Ok(mut stream) => {
                 //             println!("Accepted UNI stream");
@@ -229,17 +227,15 @@ pub unsafe extern "C" fn proc_init_client_streams(srv: *mut WebTransport, client
 				// 		}
                 //     }
 
-                // }
+                }
                 stream = client.conn.receive_datagram() => {
                     match stream {
+						//write dgram into denoBUF and send the copied bytes len to deno
                         Ok(dgram) => {
-							println!("Received datagram");
-                            let _ = sender.send(dgram);
-                            // //TODO(hironichu): Remove this debug line 
-                            // client.conn.send_datagram(b"ACK").unwrap();
-                        },
+							sender.send(dgram).unwrap();
+						},
                         _ => {
-							break;
+							continue;
 						}
                     }
                 },
@@ -250,7 +246,7 @@ pub unsafe extern "C" fn proc_init_client_streams(srv: *mut WebTransport, client
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn proc_recv_datagram(srv: *mut WebTransport, client_ptr: *mut ClientConn, buff: *mut u8) -> usize {
+pub unsafe extern "C" fn proc_recv_datagram(srv: *mut WebTransport, client_ptr: *mut ClientConn) -> usize {
     assert!(!client_ptr.is_null());
 	assert!(!srv.is_null());
     
@@ -259,8 +255,8 @@ pub unsafe extern "C" fn proc_recv_datagram(srv: *mut WebTransport, client_ptr: 
 
     match client.datagram_ch_receiver.recv() {
         Ok(dgram) => {
-            ::std::slice::from_raw_parts_mut(buff, dgram.len()).copy_from_slice(&dgram);
-            dgram.len()
+			// ::std::slice::from_raw_parts_mut(client.buffer.as_mut().unwrap().as_mut_ptr(), dgram.len()).clone_from_slice(&dgram);
+			dgram.len()
         }
         Err(_) => 0,
     }
