@@ -1,9 +1,21 @@
 {
-	"tasks": {
-		"examples:web": "deno run -A ./examples/web_server.js",
-		"start": "deno run -A --unstable ./mod/deno.ts"
-	},
-	"compilerOptions": {
-		"checkJs": true
-	}
+    "tasks": {
+        "example:web": "deno run -A ./examples/web_server/web.js",
+		"example:server": "deno run -A --unstable ./examples/deno/wt_server.ts",
+        "example:client": "deno run -A --unstable ./examples/deno/wt_client.ts"
+    },
+    "compilerOptions": {
+        "checkJs": true,
+		"strict": true
+    },
+    "fmt": {
+        "exclude": [
+            "./target",
+            "./.git",
+            "./.github",
+            "./.vscode"
+        ],
+        "lineWidth": 80,
+        "indentWidth": 4
+    }
 }
