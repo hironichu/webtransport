@@ -13,7 +13,7 @@ use ring::digest::digest;
 use ring::digest::SHA256;
 use time::Duration;
 use time::OffsetDateTime;
-
+use std::ffi::c_char;
 #[derive(Clone)]
 pub struct SelfCertificate {
     /// DER certificate.
@@ -61,7 +61,7 @@ pub fn generate_certificate<S: AsRef<str>>(common_name: S, start: OffsetDateTime
 #[no_mangle]
 pub extern "C" fn proc_gencert(buffpath: *mut u8) -> usize {
     //get the underlying buffer and use it to return the path to the cert
-    let path = unsafe { std::ffi::CStr::from_ptr(buffpath as *const i8) };
+    let path = unsafe { std::ffi::CStr::from_ptr(buffpath as *const c_char) };
     let path = path.to_str().unwrap();
 	let start = OffsetDateTime::now_utc().checked_add(Duration::days(2)).unwrap();
     let cert = generate_certificate("localhost", start, start).unwrap();
