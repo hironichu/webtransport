@@ -16,7 +16,7 @@ export class WebTransportDatagramDuplexStream {
         return new WritableStream({
             write(chunk) {
                 try {
-                    Deno.WTLIB.symbols.proc_send_datagram(
+                    window.WTLIB.symbols.proc_send_datagram(
                         connection.pointer!,
                         chunk,
                         chunk.byteLength,
@@ -36,7 +36,7 @@ export class WebTransportDatagramDuplexStream {
         const StreamBuffer = new ReadableStream<Uint8Array>({
             async pull(controller) {
                 try {
-                    const nread = await Deno.WTLIB.symbols.proc_recv_datagram(
+                    const nread = await window.WTLIB.symbols.proc_recv_datagram(
                         connection.pointer!,
                     );
                     if (nread > 0) {
@@ -78,7 +78,12 @@ export class WebTransportConnection {
         this.#CONN_PTR = pointer;
         this.datagrams = new WebTransportDatagramDuplexStream(this, buffer);
     }
-
+    async close() {
+        return await window.WTLIB.symbols.proc_client_close(
+            this.#CONN_PTR,
+            this.pointer,
+        );
+    }
     get pointer() {
         return this.#CONN_PTR;
     }

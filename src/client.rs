@@ -1,5 +1,4 @@
 use std::{path::Path, slice::from_raw_parts_mut, time::Duration};
-use tokio::runtime::Runtime;
 use wtransport::{endpoint, tls::Certificate, ClientConfig, Endpoint};
 
 use crate::{connection::Conn, executor, CLIENT_CONN_FN, RUNTIME, SEND_FN};
@@ -41,8 +40,8 @@ impl WebTransportClient {
                     assert!(!CLIENT_CONN_FN.is_none());
                     CLIENT_CONN_FN.unwrap()(client_ptr);
                 }
-                _ => {
-                    println!("DBG: Error connecting to server.");
+                Err(err) => {
+                    println!("DBG: Error connecting to server. Err: {}", err.to_string());
                 }
             }
         });
@@ -212,9 +211,4 @@ pub unsafe extern "C" fn proc_client_close(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn free_all_client(
-    _a: *mut WebTransportClient,
-    _b: *mut Conn,
-    _c: *mut Runtime,
-) {
-}
+pub unsafe extern "C" fn free_all_client(_a: *mut WebTransportClient, _b: *mut Conn) {}

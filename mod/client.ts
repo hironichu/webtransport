@@ -139,11 +139,21 @@ export class WebTransport extends EventEmitter<WebTransportEvents> {
         });
     });
 
-    close() {
+    async close() {
         this.#NOTIFY_PTR.unref();
+        this.#NOTIFY_PTR.close();
         this.#CONNECTION_CB.unref();
+        this.#CONNECTION_CB.close();
         if (this.#CONN_PTR) {
-            Deno.WTLIB.symbols.proc_client_close(this.#CONN_PTR);
+            await window.WTLIB.symbols.proc_client_close(
+                this.#CONN_PTR,
+                this.conn!.pointer,
+            );
+            //free the Client pointer
+            window.WTLIB.symbols.free_all_client(
+                this.#CONN_PTR,
+                this.conn!.pointer,
+            );
         }
 
         this.emit("close", new CloseEvent("close"));

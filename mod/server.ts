@@ -71,7 +71,6 @@ export class WebTransportServer extends EventEmitter<WebTransportServerEvents> {
         );
         this.#NOTIFY_PTR.ref();
         this.#CONNECTION_CB.ref();
-
         this.emit("listening", new Event("ready"));
     }
     /**
@@ -132,18 +131,35 @@ export class WebTransportServer extends EventEmitter<WebTransportServerEvents> {
 
     close() {
         this.#NOTIFY_PTR.unref();
+        this.#NOTIFY_PTR.close();
+        //
         this.#CONNECTION_CB.unref();
+        this.#CONNECTION_CB.close();
+
         if (this.#SRV_PTR) {
-            Deno.WTLIB.symbols.proc_server_close(this.#SRV_PTR);
+            // await window.WTLIB.symbols.proc_server_close(this.#SRV_PTR);
         }
         this.emit("close", new CloseEvent("close"));
+
+        //free all the connections
+        this.connections.forEach(async (conn, id) => {
+            await conn.close();
+            window.WTLIB.symbols.free_conn(conn.pointer);
+            //delete the connection
+            this.connections.delete(id);
+        });
+        window.WTLIB.symbols.free_server(this.#SRV_PTR!);
+        this.#SRV_PTR = undefined;
+        return;
     }
 
     private checkArgs(_options: WebTransportServerOptions) {
         if (
             ((!_options.certFile || _options.certFile.length == 0) &&
                 (!_options.keyFile || _options.keyFile.length == 0)) &&
-            (!_options.notAfter && !_options.notBefore && !_options.domain)
+            (typeof _options.notAfter == "undefined" &&
+                typeof _options.notBefore == "undefined" &&
+                !_options.domain)
         ) {
             throw new TypeError(
                 "Missing necessary parameters: certFile, keyFile or notAfter, notBefore to generate a new certificate",
@@ -151,25 +167,36 @@ export class WebTransportServer extends EventEmitter<WebTransportServerEvents> {
         }
         let certificate = "";
         let key = "";
-        if (_options.certFile && _options.keyFile) {
+
+        if (
+            (_options.certFile && _options.keyFile)
+        ) {
+            if (_options.certFile.length == 0 || _options.keyFile.length == 0) {
+                throw new TypeError(
+                    "Invalid certificate or key file path (empty string)",
+                );
+            }
             Deno.statSync(_options.certFile);
             Deno.statSync(_options.keyFile);
             //
             certificate = _options.certFile;
             key = _options.keyFile;
+            return [certificate, key];
         }
         if (
-            ((!_options.certFile || _options.certFile.length == 0) &&
-                (!_options.keyFile || _options.keyFile.length == 0)) &&
-            (_options.notAfter && _options.notBefore && _options.domain)
+            typeof _options.notAfter != "undefined" &&
+            typeof _options.notBefore != "undefined" && _options.domain
         ) {
-            [certificate, key] = GenerateCertKeyFile(
+            return [certificate, key] = GenerateCertKeyFile(
                 _options.domain,
                 _options.notBefore,
                 _options.notAfter,
             );
+        } else {
+            throw new TypeError(
+                "Missing necessary parameters: notAfter, notBefore, domain to generate a new certificate",
+            );
         }
-        return [certificate, key];
     }
 }
 export default WebTransportServer;

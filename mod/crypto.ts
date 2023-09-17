@@ -71,7 +71,7 @@ export function GenerateCertKeyFile(
     domainStr: string,
     start: number,
     end: number,
-    path = "./certs/",
+    path = join(Deno.cwd(), "./certs/"),
 ) {
     const [cert, key] = GenerateCertKey(domainStr, start, end);
     try {
@@ -79,14 +79,15 @@ export function GenerateCertKeyFile(
         const keypath = join(path, `${domainStr}.key`);
         Deno.writeFileSync(certpath, cert, {
             mode: 0o444,
-            createNew: true,
+            // createNew: true,
         });
         Deno.writeFileSync(keypath, key, {
             mode: 0o444,
-            createNew: true,
+            // createNew: true,
         });
         return [certpath, keypath];
-    } catch {
-        throw new Error("Failed to write certificate file");
+    } catch (e) {
+        console.error(e);
+        throw new Error("Failed to write certificate or key file ", e);
     }
 }

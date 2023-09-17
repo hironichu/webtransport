@@ -214,20 +214,19 @@ pub unsafe extern "C" fn proc_server_init_streams(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn proc_server_close(server_ptr: *mut WebTransportServer) {
+pub unsafe extern "C" fn proc_server_close(server_ptr: *mut WebTransportServer) -> usize {
     assert!(!server_ptr.is_null());
+
     let server = &mut *server_ptr;
     server.state = Some(false);
+    let endpoint = server.server.as_mut().unwrap();
+    endpoint.close(20, b"closed");
+    0
 }
 
 //free all above once
 #[no_mangle]
-pub unsafe extern "C" fn free_all_server(
-    _a: *mut WebTransportServer,
-    _b: *mut Conn,
-    _c: *mut Runtime,
-) {
-}
+pub unsafe extern "C" fn free_all_server(_a: *mut WebTransportServer, _c: *mut Runtime) {}
 
 #[no_mangle]
 pub unsafe extern "C" fn free_server(_: *mut WebTransportServer) {}
