@@ -1,7 +1,6 @@
 {
-	"test": {
-		
-	},
+    "test": {
+    },
     "tasks": {
         //Examples
         "example:web": "deno run -A ./examples/web_server/web.js",

@@ -1,6 +1,3 @@
-import WebTransport from "./client.ts";
-import { WebTransportServer } from "./server.ts";
-
 export const WebTransportOptions = {
     maxTimeout: 10,
     keepAlive: 3,

@@ -21,7 +21,7 @@ export class WebTransportServer extends EventEmitter<WebTransportServerEvents> {
         super();
     }
 
-    async listen() {
+    listen() {
         throw new Error("Method not implemented.");
     }
 

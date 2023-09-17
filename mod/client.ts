@@ -22,7 +22,7 @@ export class WebTransport extends EventEmitter<WebTransportEvents> {
         super();
     }
 
-    async connect(): Promise<void> {
+    connect(): Promise<void> {
         throw new Error("Method not implemented.");
     }
     async close() {
