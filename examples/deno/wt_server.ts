@@ -1,7 +1,7 @@
 //TO BE IMPLEMENTED
 import "../../mod/mod.ts";
 
-const server = new Deno.WebTransportServer(4433, {
+const server = new WebTransportServer(4433, {
     certFile: "./certs/cert.pem",
     keyFile: "./certs/key.pem",
     maxTimeout: 10,

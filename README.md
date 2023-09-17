@@ -17,7 +17,7 @@ has not been defined).
 import "https://deno.land/x/webtransport/mod.ts";
 
 //Client
-const transport = new Deno.WebTransport("https://localhost:4433");
+const transport = new WebTransport("https://localhost:4433");
 /**
  * Please note that this example above will not work if you have self validated certificates
  * use the following to disable certificate verification.. (Warning this is not secure)
@@ -44,7 +44,7 @@ This server tries to be as close to the client api but has some differences.
 import "https://deno.land/x/webtransport/mod.ts";
 
 //Client
-const transport = new Deno.WebTransportServer(4433, {
+const transport = new WebTransportServer(4433, {
     keyFile: "./certs/key.pem",
     certFile: "./certs/cert.pem",
     maxTimeout: 10,
@@ -67,7 +67,7 @@ transport.on("connection", async (conn) => {
 
 # IMPORTANT
 
-The module add declaration to the global scope, so you can use the API without
-importing the classes
+The module add declaration to the global namespace, so you can use the API
+without importing the classes
 
-This might not be practical for some people, but for now cannot be changed.
+This might not be practical for some people, but for now wont be changed.

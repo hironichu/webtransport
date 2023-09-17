@@ -1,7 +1,7 @@
 //TO BE IMPLEMENTED
 import "../../mod/mod.ts";
 
-const client = new Deno.WebTransport("https://localhost:4433", {
+const client = new WebTransport("https://localhost:4433", {
     validateCertificate: false,
     maxTimeout: 10,
     keepAlive: 3,
