@@ -182,6 +182,7 @@ jobs:
           matrix.job == 'test' && matrix.profile == 'debug' && !startsWith(github.ref, 'refs/tags/')
         env:
             DEVELOPMENT: true
+            BUILD_TARGET: debug
         run: |
           deno task test
 
@@ -190,6 +191,7 @@ jobs:
           (matrix.job == 'test' && matrix.profile == 'release') &&
           ((github.ref == 'refs/heads/main' && !startsWith(github.ref, 'refs/tags/')))
         env:
+            BUILD_TARGET: release
             DEVELOPMENT: true
         run: |
           deno task test
