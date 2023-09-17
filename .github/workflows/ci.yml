@@ -195,18 +195,30 @@ jobs:
           startsWith(github.ref, 'refs/tags/'))))
         run: |
           deno task build:release-arm
-      - name: Build release Windows
+
+      - name: Build Debug Windows
         if: |
-          runner.os == 'Windows' &&
+          (runner.os == 'Windows' &&
           matrix.job == 'test' &&
-          matrix.profile == 'release'
+          matrix.profile == 'release' &&
+          (github.repository == 'hironichu/webtransport' &&
+          (github.ref != 'refs/heads/main' ||
+          startsWith(github.ref, 'refs/tags/'))))
         run: |
           deno task build:debug
-
+      - name: Build Release Windows
+        if: |
+            (runner.os == 'Windows' &&
+            matrix.job == 'test' &&
+            matrix.profile == 'release' &&
+            (github.repository == 'hironichu/webtransport' &&
+            (github.ref == 'refs/heads/main' ||
+            startsWith(github.ref, 'refs/tags/'))))
+          run: |
+            deno task build:debug
       - name: Run deno test (debug)
         if: |
-          matrix.job == 'test' && matrix.profile == 'debug' &&
-          !startsWith(github.ref, 'refs/tags/')
+          matrix.job == 'test' && matrix.profile == 'debug' && !startsWith(github.ref, 'refs/tags/')
         run: |
           deno task test
       - name: Run deno test (release)
