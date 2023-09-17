@@ -1,6 +1,6 @@
 [package]
-name = "Webtransport"
-description = "Webtransport FFI library for Deno"
+name = "webtransport"
+description = "Deno WebTransport FFI library for Deno"
 version = "0.1.0"
 edition = "2021"
 

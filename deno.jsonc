@@ -5,10 +5,16 @@
         "example:server": "deno run -A --unstable ./examples/deno/wt_server.ts",
         "example:client": "deno run -A --unstable ./examples/deno/wt_client.ts",
 		// Build task
-		"build:release-arm": "cargo build --out-dir ./dist -Z unstable-options --release && mv ./dist/webtransport.so ./dist/webtransport_aarch64.so",
-		"build:release":"",
+		"build:release":"deno task util:clean && cargo build --out-dir ./dist -Z unstable-options --release",
+		"build:release-arm": "deno task util:clean && cargo build --out-dir ./dist -Z unstable-options --release && mv ./dist/dwt.so ./dist/webtransport_aarch64.so",
+		"build:debug": "deno task util:clean && cargo build --out-dir ./dist -Z unstable-options",
+		"build:debug-arm": "deno task util:clean && cargo build --out-dir ./dist -Z unstable-options && mv ./dist/dwt.so ./dist/webtransport_aarch64.so",
 		//Utils
 		"util:clean": "deno run --allow-write --allow-read ./utils/clean.ts",
+		"util:fmt" : "deno fmt --ignore=./target --ignore=./.git --ignore=./.github --ignore=./.vscode",
+		"util:lint": "deno lint --unstable --ignore=./target --ignore=./.git --ignore=./.github --ignore=./.vscode",
+		//Tests
+		"test": "deno test -A --unstable examples/deno/wt_server_test.ts"
 	},
     "compilerOptions": {
         "checkJs": true,

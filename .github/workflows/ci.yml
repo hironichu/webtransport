@@ -14,7 +14,7 @@ concurrency:
   group: ${{ github.workflow }}-${{ !contains(github.event.pull_request.labels.*.name, 'test-flaky-ci') && github.head_ref || github.run_id }}
   cancel-in-progress: true
 
-name: WebTransport CI
+name: DWT CI
 jobs:
   build:
     name: ${{ matrix.job }} ${{ matrix.profile }} ${{ matrix.os }}
@@ -162,24 +162,24 @@ jobs:
                       https://github.com/rust-lang/crates.io-index \
                       ~/.cargo/registry/index/github.com-1ecc6299db9ec823
           fi
-      - name: Test FMT
+      - name: Deno Format
         if: matrix.job == 'lint'
-        run: deno task fmt
-      - name: Test LINT
+        run: deno task util:fmt
+      - name: Deno lint
         if: matrix.job == 'lint'
-        run: deno task lint
+        run: deno task util:lint
 
       - name: Build debug unix x64
         if: |
           (startsWith(matrix.os, 'ubuntu') ||  startsWith(matrix.os, 'macos')) &&
           (matrix.job == 'test' && matrix.profile == 'debug')
-        run: deno task cargo-build --all-targets
+        run: deno task build:debug
       - name: Build debug unix arch64
         if: |
           (startsWith(matrix.os, 'self-hosted')) &&
           (matrix.job == 'test' && matrix.profile == 'debug') 
         run: |
-          deno task cargo-build-arm
+          deno task build:debug-arm
       - name: Build debug Windows
         if: |
           runner.os == 'Windows' &&
@@ -188,7 +188,7 @@ jobs:
         env:
           CARGO_PROFILE_DEV_DEBUG: 0
         run: |
-          deno task cargo-build --all-targets
+          deno task build:debug
 
       - name: Build release Unix x64
         if: |
@@ -197,8 +197,9 @@ jobs:
           (github.repository == '${{ github.repository }}' &&
           (github.ref == 'refs/heads/main' ||
           startsWith(github.ref, 'refs/tags/'))))
-        run: deno task cargo-build --release
-      - name: Build release Unix Aarch64
+        run: deno task build:release
+
+      - name: Build release Unix aarch64
         if: |
           (startsWith(matrix.os, 'self-hosted')) &&
           (matrix.job == 'test' && matrix.profile == 'release') && (matrix.use_sysroot ||
@@ -206,14 +207,14 @@ jobs:
           (github.ref == 'refs/heads/main' ||
           startsWith(github.ref, 'refs/tags/'))))
         run: |
-          deno task cargo-release-arm
+          deno task build:release-arm
       - name: Build release Windows
         if: |
           runner.os == 'Windows' &&
           matrix.job == 'test' &&
           matrix.profile == 'release'
         run: |
-          deno task cargo-build
+          deno task build:debug
 
       - name: Run deno test (debug)
         if: |
