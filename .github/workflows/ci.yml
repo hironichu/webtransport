@@ -115,7 +115,7 @@ jobs:
           deno --version
       - name: Cache Cargo home
         if: (matrix.job == 'test' && (matrix.profile == 'release' || matrix.profile == 'debug'))
-        uses: actions/cache@v2
+        uses: actions/cache@v3
         with:
           path: |
             ~/.cargo/registry/index
@@ -124,7 +124,7 @@ jobs:
           key: 16-cargo-home-${{ matrix.os }}-${{ hashFiles('Cargo.lock') }}
           
       - name: Cache build output (main)
-        uses: actions/cache@03e00da99d75a2204924908e1cca7902cafce66b
+        uses: actions/cache@v3
         if: (matrix.job == 'test' && matrix.profile == 'release') &&
             github.ref == 'refs/heads/main'
         with:
@@ -135,7 +135,7 @@ jobs:
           key: |
             16-cargo-target-${{ matrix.os }}-${{ matrix.profile }}-${{ github.sha }}
       - name: Cache build output (PR)
-        uses: actions/cache@03e00da99d75a2204924908e1cca7902cafce66b
+        uses: actions/cache@v3
         if: github.ref != 'refs/heads/main' && !startsWith(github.ref, 'refs/tags/') &&
             matrix.job == 'test' && matrix.profile == 'release'
         with:
@@ -173,8 +173,7 @@ jobs:
           (startsWith(matrix.os, 'ubuntu') || startsWith(matrix.os, 'macos') || startsWith(matrix.os, 'windows')) &&
           (matrix.job == 'test' && matrix.profile == 'release') && (matrix.use_sysroot ||
           (github.repository == 'hironichu/webtransport' &&
-          (github.ref == 'refs/heads/main' ||
-          startsWith(github.ref, 'refs/tags/'))))
+          (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/'))))
         run: deno task build:release
 
       - name: Build release Linux ARM
