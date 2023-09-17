@@ -62,5 +62,5 @@ if (!Deno.env.get("DEVELOPMENT")) {
     LIB_URL!.username = Deno.env.get("DENO_AUTH_TOKENS")!.split("@")[0]!;
 }
 
-LIB_URL = LIB_URL ?? new URL("../target/release/", import.meta.url);
+LIB_URL = LIB_URL ?? new URL("../dist/", import.meta.url);
 export default LIB_URL;
