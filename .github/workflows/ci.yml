@@ -14,7 +14,7 @@ concurrency:
   group: ${{ github.workflow }}-${{ !contains(github.event.pull_request.labels.*.name, 'test-flaky-ci') && github.head_ref || github.run_id }}
   cancel-in-progress: true
 
-name: DWT CI
+name: Webtransport CI
 jobs:
   build:
     name: ${{ matrix.job }} ${{ matrix.profile }} ${{ matrix.os }}

@@ -5,9 +5,9 @@ if (import.meta.main) {
         const files = Deno.readDirSync("./dist");
         for (const file of files) {
             console.log(rule.test(file.name));
-            // if (rule.test(file.name)) {
-            Deno.removeSync("./dist/" + file.name);
-            // }
+            if (rule.test(file.name)) {
+            	Deno.removeSync("./dist/" + file.name);
+            }
         }
         console.info(`Cleaned up ./dist`);
     } catch {
