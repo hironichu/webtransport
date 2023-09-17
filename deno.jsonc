@@ -9,9 +9,9 @@
         "example:client": "deno run -A --unstable ./examples/deno/wt_client.ts",
         // Build task
         "build:release": "deno task util:clean && cargo build --out-dir ./dist -Z unstable-options --release",
-        "build:release-arm": "deno task util:clean && cargo build --out-dir ./dist -Z unstable-options --release && mv ./dist/webtransport.so ./dist/webtransport_aarch64.so",
+        "build:release-arm": "deno task util:clean && cargo build --out-dir ./dist -Z unstable-options --release && mv ./dist/libwebtransport.so ./dist/libwebtransport_aarch64.so",
         "build:debug": "deno task util:clean && cargo build --out-dir ./dist -Z unstable-options",
-        "build:debug-arm": "deno task util:clean && cargo build --out-dir ./dist -Z unstable-options && mv ./dist/webtransport.so ./dist/webtransport_aarch64.so",
+        "build:debug-arm": "deno task util:clean && cargo build --out-dir ./dist -Z unstable-options && mv ./dist/libwebtransport.so ./dist/libwebtransport_aarch64.so",
         //Utils
         "util:clean": "deno run --allow-write --allow-read ./utils/clean.js",
         "util:fmt": "deno fmt --unstable",
