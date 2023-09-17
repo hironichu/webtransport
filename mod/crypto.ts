@@ -1,7 +1,6 @@
 if (import.meta.main) {
     throw new Error("This module is not meant to be imported.");
 }
-import { symbols } from "./interface.ts";
 import { join } from "https://deno.land/std@0.184.0/path/mod.ts";
 import { encodeBuf } from "./utils.ts";
 export function base64ToArrayBuffer(base64: string) {
@@ -32,7 +31,6 @@ export function GenerateCertKey(
     domainStr: string,
     start: number,
     end: number,
-    lib: Deno.DynamicLibrary<typeof symbols>,
 ) {
     if (start > end) throw new Error("Invalid date range");
     if (domainStr.length === 0) throw new Error("Invalid domain name");
@@ -43,7 +41,7 @@ export function GenerateCertKey(
     const certLenPTR = new Uint32Array(1);
     const keyLenPTR = new Uint32Array(1);
     try {
-        const struct = lib.symbols.proc_gencert(
+        const struct = window.WTLIB.symbols.proc_gencert(
             domain[0],
             domain[1],
             2,
@@ -74,16 +72,20 @@ export function GenerateCertKeyFile(
     start: number,
     end: number,
     path = "./certs/",
-    lib: Deno.DynamicLibrary<typeof symbols>,
 ) {
-    const [cert, key] = GenerateCertKey(domainStr, start, end, lib);
+    const [cert, key] = GenerateCertKey(domainStr, start, end);
     try {
-        Deno.writeFileSync(join(path, `${domainStr}.crt`), cert, {
+        const certpath = join(path, `${domainStr}.crt`);
+        const keypath = join(path, `${domainStr}.key`);
+        Deno.writeFileSync(certpath, cert, {
             mode: 0o444,
+            createNew: true,
         });
-        Deno.writeFileSync(join(path, `${domainStr}.key`), key, {
+        Deno.writeFileSync(keypath, key, {
             mode: 0o444,
+            createNew: true,
         });
+        return [certpath, keypath];
     } catch {
         throw new Error("Failed to write certificate file");
     }

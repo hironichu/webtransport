@@ -2,10 +2,28 @@ export const WebTransportOptions = {
     maxTimeout: 10,
     keepAlive: 3,
 } as const;
+
+export const CertificateOptions = {
+    certFile: "",
+    keyFile: "",
+};
+
+export const CertificateGenParams = {
+    domain: Deno.hostname(),
+    notBefore: 0,
+    notAfter: 10,
+};
+type CertificateOptions =
+    & typeof CertificateOptions
+    & typeof CertificateGenParams;
+
 export const WebTransportServerOptions = {
     maxTimeout: 10,
     keepAlive: 3,
-} as const;
+};
+export type WebTransportServerOptions =
+    & typeof WebTransportServerOptions
+    & Partial<CertificateOptions>;
 
 export const symbols = {
     // Server symbols
@@ -27,11 +45,16 @@ export const symbols = {
     proc_server_listen: {
         parameters: ["pointer", "function"],
         result: "pointer",
+        callback: true,
     },
     proc_server_init_streams: {
         parameters: ["pointer", "buffer", "usize"],
         result: "void",
         nonblocking: true,
+    },
+    proc_server_close: {
+        parameters: ["pointer"],
+        result: "void",
     },
     // Client symbols
     // Shared symbols

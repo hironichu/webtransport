@@ -13,7 +13,7 @@ type WebTransportEvents = {
 };
 export class WebTransport extends EventEmitter<WebTransportEvents> {
     #CONN_PTR: number | undefined;
-    #LIB: Deno.DynamicLibrary<typeof symbols> = window.WTLIB;
+    #LIB: Deno.DynamicLibrary<typeof symbols> = Deno.WTLIB;
 
     constructor(
         _client: string,

@@ -1,11 +1,18 @@
 if (import.meta.main) {
     throw new Error("This module is not meant to be imported.");
 }
+import { WebTransportConnection } from "./connection.ts";
+import { GenerateCertKeyFile } from "./crypto.ts";
 import { EventEmitter } from "./deps.ts";
-import { WebTransportServerOptions } from "./interface.ts";
-//refuse improt of we dont come from main module
+import {
+    type WebTransportServerOptions,
+    WebTransportServerOptions as ServerOpts,
+} from "./interface.ts";
+import { encodeBuf } from "./utils.ts";
 
 type WebTransportServerEvents = {
+    listening: [Event];
+    connection: [WebTransportConnection];
     event: [MessageEvent];
     // Error Event
     error: [ErrorEvent | string];
@@ -14,19 +21,154 @@ type WebTransportServerEvents = {
 };
 
 export class WebTransportServer extends EventEmitter<WebTransportServerEvents> {
+    public connections: Map<number, WebTransportConnection> = new Map();
+    #SRV_PTR: Deno.PointerValue<unknown> | undefined;
+
+    #STATE_PTR = new Uint32Array(1);
+    #NOTIFY_PTR = new Deno.UnsafeCallback(
+        {
+            parameters: ["u32", "pointer", "u32"],
+            result: "void",
+        },
+        this.notify.bind(this),
+    );
+    #CONNECTION_CB = new Deno.UnsafeCallback(
+        {
+            parameters: ["pointer"],
+            result: "void",
+        },
+        this.connection.bind(this),
+    );
     constructor(
         _port: number,
-        _options: typeof WebTransportServerOptions = WebTransportServerOptions,
+        _options: WebTransportServerOptions = ServerOpts,
     ) {
         super();
+        const [certificate, key] = this.checkArgs(_options);
+
+        const certbuf = encodeBuf(certificate);
+        const keybuf = encodeBuf(key);
+
+        this.#SRV_PTR = window.WTLIB.symbols.proc_server_init(
+            this.#NOTIFY_PTR.pointer,
+            _port,
+            true,
+            _options.keepAlive,
+            _options.maxTimeout,
+            certbuf[0],
+            certbuf[1],
+            keybuf[0],
+            keybuf[1],
+        );
+
+        if (!this.#SRV_PTR) {
+            throw new Error("Failed to initialize server");
+        }
+
+        window.WTLIB.symbols.proc_server_listen(
+            this.#SRV_PTR,
+            this.#CONNECTION_CB.pointer,
+        );
+        this.#NOTIFY_PTR.ref();
+        this.#CONNECTION_CB.ref();
+
+        this.emit("listening", new Event("ready"));
+    }
+    /**
+     * @callback connection
+     * @param {Deno.PointerValue<unknown>} client
+     * @returns {void}
+     * @description This function is called when a new connection is received from the server
+     */
+    private connection(client: Deno.PointerValue<unknown>) {
+        const CONN_BUFFER = new Uint8Array(65536);
+        window.WTLIB.symbols.proc_server_init_streams(
+            client,
+            CONN_BUFFER,
+            CONN_BUFFER.byteLength,
+        );
+        //Setting up the stream for the new connection
+        const conn = new WebTransportConnection(
+            client,
+            CONN_BUFFER,
+        );
+
+        this.connections.set(
+            this.connections.size,
+            conn,
+        );
+        this.emit("connection", conn);
+    }
+    /**
+     * @callback notify
+     * @param {number} code
+     * @param {Deno.PointerValue<unknown>} buffer
+     * @param {number} buflen
+     * @returns {void}
+     *
+     * @description This function is called when a new event is received from the server
+     */
+    private notify(
+        _code: unknown | number,
+        buffer: Deno.PointerValue<unknown>,
+        buflen: number,
+    ) {
+        const code = _code as bigint;
+        console.log(code);
+        if (buflen < 0) {
+            return;
+        }
+        const pointer = Deno.UnsafePointerView.getArrayBuffer(
+            buffer as unknown as NonNullable<Deno.PointerValue>,
+            buflen,
+        );
+        const event = new MessageEvent("message", {
+            data: pointer,
+        });
+
+        //TODO(hironichu): Implement Error/event catching from rust to free the memory once a connection drop or if something else happens.
+        this.emit("event", event);
     }
 
-    listen() {
-        throw new Error("Method not implemented.");
+    close() {
+        this.#NOTIFY_PTR.unref();
+        this.#CONNECTION_CB.unref();
+        if (this.#SRV_PTR) {
+            Deno.WTLIB.symbols.proc_server_close(this.#SRV_PTR);
+        }
+        this.emit("close", new CloseEvent("close"));
     }
-
-    async close() {
-        //
+    private checkArgs(_options: WebTransportServerOptions) {
+        if (
+            ((!_options.certFile || _options.certFile.length == 0) &&
+                (!_options.keyFile || _options.keyFile.length == 0)) &&
+            (!_options.notAfter && !_options.notBefore && !_options.domain)
+        ) {
+            throw new TypeError(
+                "Missing necessary parameters: certFile, keyFile or notAfter, notBefore to generate a new certificate",
+            );
+        }
+        let certificate = "";
+        let key = "";
+        if (_options.certFile && _options.keyFile) {
+            Deno.statSync(_options.certFile);
+            Deno.statSync(_options.keyFile);
+            //
+            certificate = _options.certFile;
+            key = _options.keyFile;
+        }
+        if (
+            ((!_options.certFile || _options.certFile.length == 0) &&
+                (!_options.keyFile || _options.keyFile.length == 0)) &&
+            (_options.notAfter && _options.notBefore && _options.domain)
+        ) {
+            [certificate, key] = GenerateCertKeyFile(
+                _options.domain,
+                _options.notBefore,
+                _options.notAfter,
+            );
+        }
+        return [certificate, key];
     }
 }
 export default WebTransportServer;

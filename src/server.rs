@@ -213,6 +213,13 @@ pub unsafe extern "C" fn proc_server_init_streams(
     .detach();
 }
 
+#[no_mangle]
+pub unsafe extern "C" fn proc_server_close(server_ptr: *mut WebTransportServer) {
+    assert!(!server_ptr.is_null());
+    let server = &mut *server_ptr;
+    server.state = Some(false);
+}
+
 //free all above once
 #[no_mangle]
 pub unsafe extern "C" fn free_all_server(
