@@ -2,7 +2,7 @@ use std::{path::Path, slice::from_raw_parts_mut, time::Duration};
 use tokio::runtime::Runtime;
 use wtransport::{endpoint, tls::Certificate, Endpoint, ServerConfig};
 
-use crate::{connection::Conn, executor, CONN_FN, RUNTIME, SEND_FN};
+use crate::{connection::Conn, executor, RUNTIME, SEND_FN, SERVER_CONN_FN};
 
 pub struct WebTransportServer {
     pub server: Option<Endpoint<endpoint::Server>>,
@@ -60,8 +60,8 @@ impl WebTransportServer {
                         // println!("DBG: Sending connection to channel.");
                         let client = Conn::new(conn);
                         let client_ptr = Box::into_raw(Box::new(client));
-                        assert!(!CONN_FN.is_none()); //TODO(hironichu): Handle this better.
-                        CONN_FN.unwrap()(client_ptr);
+                        assert!(!SERVER_CONN_FN.is_none()); //TODO(hironichu): Handle this better.
+                        SERVER_CONN_FN.unwrap()(client_ptr);
                     }
                     _ => {
                         println!("Error accepting connection");
@@ -133,7 +133,7 @@ pub unsafe extern "C" fn proc_server_listen(
     assert!(!server_ptr.is_null());
     let server = &mut *server_ptr;
     server.conn_cb = cb;
-    CONN_FN = cb;
+    SERVER_CONN_FN = cb;
     server.handle_sess_in();
 }
 

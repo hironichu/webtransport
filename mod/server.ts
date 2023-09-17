@@ -138,6 +138,7 @@ export class WebTransportServer extends EventEmitter<WebTransportServerEvents> {
         }
         this.emit("close", new CloseEvent("close"));
     }
+
     private checkArgs(_options: WebTransportServerOptions) {
         if (
             ((!_options.certFile || _options.certFile.length == 0) &&

@@ -1,7 +1,8 @@
 export const WebTransportOptions = {
     maxTimeout: 10,
     keepAlive: 3,
-} as const;
+    validateCertificate: true,
+};
 
 export const CertificateOptions = {
     certFile: "",
@@ -25,19 +26,22 @@ export type WebTransportServerOptions =
     & typeof WebTransportServerOptions
     & Partial<CertificateOptions>;
 
+export type WebTransportOptions =
+    & typeof WebTransportOptions
+    & Partial<typeof CertificateOptions>;
 export const symbols = {
     // Server symbols
     proc_server_init: {
         parameters: [
-            "function",
-            "u16",
-            "bool",
-            "u64",
-            "u64",
-            "buffer",
-            "usize",
-            "buffer",
-            "usize",
+            "function", //Callback
+            "u16", //Port
+            "bool", //Migration
+            "u64", //KeepAlive
+            "u64", //MaxTimeout
+            "buffer", //Cert
+            "usize", //CertLen
+            "buffer", //Key
+            "usize", //KeyLen
         ],
         result: "pointer",
         callback: true,
@@ -57,6 +61,34 @@ export const symbols = {
         result: "void",
     },
     // Client symbols
+    proc_client_init: {
+        parameters: [
+            "function",
+            "u64", //KeepAlive
+            "u64", //MaxTimeout
+            "bool", //Certcheck
+            "buffer", //Cert
+            "usize", //CertLen
+            "buffer", //Key
+            "usize", //KeyLen
+        ],
+        result: "pointer",
+        callback: true,
+    },
+    proc_client_connect: {
+        parameters: ["pointer", "function", "buffer", "usize"],
+        result: "pointer",
+        callback: true,
+    },
+    proc_client_init_streams: {
+        parameters: ["pointer", "buffer", "usize"],
+        result: "void",
+        nonblocking: true,
+    },
+    proc_client_close: {
+        parameters: ["pointer"],
+        result: "void",
+    },
     // Shared symbols
     proc_recv_datagram: {
         parameters: ["pointer"],

@@ -51,6 +51,7 @@
 		})
 		await webtransport.ready;
 		window.serveurDEMO = webtransport;
+		console.log(webtransport)
 		webtransport.onstatechange = (event) => {
 			console.log("EVENT : ", event);
 		}

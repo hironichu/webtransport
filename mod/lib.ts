@@ -4,7 +4,7 @@ import { symbols } from "./interface.ts";
 
 const options: FetchOptions = {
     name: "webtransport",
-    cache: "reloadAll",
+    cache: "only",
     url: LIB_URL!,
 };
 

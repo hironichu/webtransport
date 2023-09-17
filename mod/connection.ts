@@ -1,5 +1,10 @@
-export class Datagram {
+export class WebTransportDatagramDuplexStream {
     #READ_BUFFER: Uint8Array;
+    readonly incomingHighWaterMark = 1;
+    readonly incomingMaxAge = null;
+    readonly maxDatagramSize = 1024;
+    readonly outgoingHighWaterMark = 1;
+    readonly outgoingMaxAge = null;
     constructor(
         private connection: WebTransportConnection,
         _buffer: Uint8Array,
@@ -49,19 +54,31 @@ export class Datagram {
         });
         return StreamBuffer;
     }
+
+    //TODO(hironichu): implement the rest of the methods
+    public incomingBidirectionalStreams?: ReadableStream<
+        ReadableStream<Uint8Array>
+    > = undefined;
+    public incomingUnidirectionalStreams?: ReadableStream<
+        ReadableStream<Uint8Array>
+    > = undefined;
 }
+
 export class WebTransportConnection {
+    state: "connected" | "closed" | "draining" | "failed" | "connecting" =
+        "connected" as const;
+
     #CONN_PTR: Deno.PointerValue<unknown>;
-    public datagrams: Datagram;
+    public datagrams: WebTransportDatagramDuplexStream;
     constructor(
         pointer: Deno.PointerValue<unknown>,
         buffer: Uint8Array,
     ) {
+        this.state = "closed";
         this.#CONN_PTR = pointer;
-        this.datagrams = new Datagram(this, buffer);
+        this.datagrams = new WebTransportDatagramDuplexStream(this, buffer);
     }
 
-    //TODO: add the rest of the methods for uni and bi streams
     get pointer() {
         return this.#CONN_PTR;
     }
