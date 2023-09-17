@@ -1,8 +1,8 @@
-use std::{slice::from_raw_parts_mut, path::Path, time::Duration};
+use std::{path::Path, slice::from_raw_parts_mut, time::Duration};
 use tokio::runtime::Runtime;
-use wtransport::{ Endpoint, endpoint, ServerConfig, tls::Certificate};
+use wtransport::{endpoint, tls::Certificate, Endpoint, ServerConfig};
 
-use crate::{RUNTIME, CONN_FN, SEND_FN, connection::Conn, executor};
+use crate::{connection::Conn, executor, CONN_FN, RUNTIME, SEND_FN};
 
 pub struct WebTransportServer {
     pub server: Option<Endpoint<endpoint::Server>>,
@@ -72,7 +72,6 @@ impl WebTransportServer {
     }
 }
 
-
 #[no_mangle]
 pub unsafe extern "C" fn proc_server_init(
     send_func: Option<extern "C" fn(u32, *mut u8, u32)>,
@@ -100,12 +99,17 @@ pub unsafe extern "C" fn proc_server_init(
     } else {
         Some(Duration::from_secs(keepalive))
     };
+    let timeout = if timeout == 0 {
+        None
+    } else {
+        Some(Duration::from_secs(timeout))
+    };
     //print the paths for debug
     let config = ServerConfig::builder()
         .with_bind_config(wtransport::config::IpBindConfig::InAddrAnyDual, port)
         .with_certificate(certificates)
         .keep_alive_interval(keepalive)
-        .max_idle_timeout(Some(Duration::from_secs(timeout)))
+        .max_idle_timeout(timeout)
         .unwrap()
         .allow_migration(migration)
         .build();
@@ -145,7 +149,7 @@ pub unsafe extern "C" fn proc_server_init_streams(
     let sender = client.datagram_ch_sender.clone();
 
     client.buffer = Some(from_raw_parts_mut(buffer, buflen));
-	
+
     executor::spawn(async move {
         loop {
             tokio::select! {
@@ -195,21 +199,28 @@ pub unsafe extern "C" fn proc_server_init_streams(
                     match stream {
                         Ok(dgram) => sender.send_async(dgram).await.unwrap(),
                         _ => {
-							client.conn.closed().await;
-							//TODO(hironichu): Send action to Deno to free the pointer and buffer
-							return ;
+                            client.conn.closed().await;
+                            //TODO(hironichu): Send action to Deno to free the pointer and buffer
+                            // SEND_FN.unwrap()(client, std::ptr::null_mut(), 0);
+                            return ;
                         }
                     }
                 },
 
             }
         }
-    }).detach();
+    })
+    .detach();
 }
 
 //free all above once
 #[no_mangle]
-pub unsafe extern "C" fn free_all_server(_a: *mut WebTransportServer, _b: *mut Conn, _c: *mut Runtime) {}
+pub unsafe extern "C" fn free_all_server(
+    _a: *mut WebTransportServer,
+    _b: *mut Conn,
+    _c: *mut Runtime,
+) {
+}
 
 #[no_mangle]
 pub unsafe extern "C" fn free_server(_: *mut WebTransportServer) {}

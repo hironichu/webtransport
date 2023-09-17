@@ -1,48 +1,13 @@
 import { dlopen, FetchOptions } from "./deps.ts";
+import LIB_URL from "../utils/download_lib.ts";
+import { symbols } from "./interface.ts";
 
-const symbols = {
-    proc_server_init: {
-        parameters: [
-            "function",
-            "u16",
-            "bool",
-            "u64",
-            "u64",
-            "buffer",
-            "usize",
-            "buffer",
-            "usize",
-        ],
-        result: "pointer",
-        callback: true,
-    },
-    proc_server_listen: {
-        parameters: ["pointer", "function"],
-        result: "pointer",
-    },
-
-    proc_server_init_streams: {
-        parameters: ["pointer", "buffer", "usize"],
-        result: "void",
-        nonblocking: true,
-    },
-    proc_recv_datagram: {
-        parameters: ["pointer"],
-        result: "usize",
-        nonblocking: true,
-    },
-    proc_send_datagram: {
-        parameters: ["pointer", "buffer", "usize"],
-        result: "void",
-        nonblocking: false,
-    },
-} as const;
-
-//TODO(hironichu): Make this works from internet path
 const options: FetchOptions = {
     name: "webtransport",
     cache: "reloadAll",
-    url: "./target/release/",
+    url: LIB_URL!,
 };
 
-export const LIB = await dlopen(options, symbols);
+export const LIB = async () => await dlopen(options, symbols);
+
+export default { LIB, symbols };

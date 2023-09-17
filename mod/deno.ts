@@ -1,14 +1,6 @@
-import { LIB } from "./lib.ts";
-
+import LIB from "./lib.ts";
+import { encodeBuf } from "./utils.ts";
 const lib = LIB;
-export function encode(v: string | Uint8Array): Uint8Array {
-    if (typeof v !== "string") return v;
-    return new TextEncoder().encode(v);
-}
-export function encodeBuffPtr(v: string | Uint8Array): [Uint8Array, number] {
-    if (typeof v !== "string") return [v, v.length];
-    return [new TextEncoder().encode(v), v.length];
-}
 
 const ptrstate = new Uint32Array(1);
 
@@ -36,8 +28,8 @@ let serverPTR;
 let new_connection;
 const _decoder = new TextDecoder();
 try {
-    const certpath = encodeBuffPtr("./certs/cert.pem");
-    const keypath = encodeBuffPtr("./certs/key.pem");
+    const certpath = encodeBuf("./certs/cert.pem");
+    const keypath = encodeBuf("./certs/key.pem");
 
     serverPTR = lib.symbols.proc_server_init(
         sender.pointer,

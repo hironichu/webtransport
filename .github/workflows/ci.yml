@@ -66,7 +66,7 @@ jobs:
       - name: Configure git
         run: |
           git config --global core.symlinks true
-          git config --global fetch.parallel 16
+          git config --global fetch.parallel 4
       - name: Clone repository
         uses: actions/checkout@v3
         with:
@@ -114,15 +114,6 @@ jobs:
           rustc --version
           cargo --version
           deno --version
-      - name: Cache Cargo home
-        if: (matrix.job == 'test' && (matrix.profile == 'release' || matrix.profile == 'debug'))
-        uses: actions/cache@v3
-        with:
-          path: |
-            ~/.cargo/registry/index
-            ~/.cargo/registry/cache
-            ~/.cargo/git/db
-          key: 16-cargo-home-${{ matrix.os }}-${{ hashFiles('Cargo.lock') }}
           
       - name: Cache build output (main)
         uses: actions/cache@v3

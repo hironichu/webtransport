@@ -1,1 +1,3 @@
-console.info("TBD");
+Deno.test({ name: "Server startup" }, async () => {
+    //
+});

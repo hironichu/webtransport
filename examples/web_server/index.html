@@ -62,10 +62,10 @@
 			let int2 = 0;
 			const encoder = new TextEncoder();
 			console.log("start sending")
-			while(1) {
-			    if (int2 === 100_000) {
-			        break ;
-			    }
+			while (1) {
+				if (int2 === 100_000) {
+					break;
+				}
 				await window.writeDDBN.write(encoder.encode(int2++));
 			}
 
