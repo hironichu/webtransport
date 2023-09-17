@@ -188,9 +188,7 @@ jobs:
       - name: Run deno test (release)
         if: |
           (matrix.job == 'test' && matrix.profile == 'release') &&
-          (matrix.use_sysroot || (
-          github.repository == 'hironichu/webtransport' &&
-          github.ref == 'refs/heads/main' && !startsWith(github.ref, 'refs/tags/')))
+          ((github.ref == 'refs/heads/main' && !startsWith(github.ref, 'refs/tags/')))
         env:
             DEVELOPMENT: true
         run: |
