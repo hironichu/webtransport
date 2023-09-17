@@ -155,38 +155,29 @@ jobs:
         if: matrix.job == 'lint'
         run: deno task util:lint
 
-      - name: Build debug unix x64
+      - name: Build Debug
         if: |
-          (startsWith(matrix.os, 'ubuntu') ||  startsWith(matrix.os, 'macos')) &&
+          (startsWith(matrix.os, 'ubuntu') || startsWith(matrix.os, 'macos') ||  startsWith(matrix.os, 'windows')) &&
           (matrix.job == 'test' && matrix.profile == 'debug')
         run: deno task build:debug
 
-      - name: Build debug unix arch64
+      - name: Build Debug ARM
         if: |
           (startsWith(matrix.os, 'self-hosted')) &&
           (matrix.job == 'test' && matrix.profile == 'debug') 
         run: |
           deno task build:debug-arm
-      - name: Build debug Windows
-        if: |
-          runner.os == 'Windows' &&
-          matrix.job == 'test' &&
-          matrix.profile == 'debug'
-        env:
-          CARGO_PROFILE_DEV_DEBUG: 0
-        run: |
-          deno task build:debug
 
-      - name: Build release Unix x64
+      - name: Build release
         if: |
-          (startsWith(matrix.os, 'ubuntu') || startsWith(matrix.os, 'macos')) &&
+          (startsWith(matrix.os, 'ubuntu') || startsWith(matrix.os, 'macos') || startsWith(matrix.os, 'windows')) &&
           (matrix.job == 'test' && matrix.profile == 'release') && (matrix.use_sysroot ||
           (github.repository == 'hironichu/webtransport' &&
           (github.ref == 'refs/heads/main' ||
           startsWith(github.ref, 'refs/tags/'))))
         run: deno task build:release
 
-      - name: Build release Unix aarch64
+      - name: Build release Linux ARM
         if: |
           (startsWith(matrix.os, 'self-hosted')) &&
           (matrix.job == 'test' && matrix.profile == 'release') && (matrix.use_sysroot ||
@@ -196,26 +187,6 @@ jobs:
         run: |
           deno task build:release-arm
 
-      - name: Build Debug Windows
-        if: |
-          (runner.os == 'Windows' &&
-          matrix.job == 'test' &&
-          matrix.profile == 'release' &&
-          (github.repository == 'hironichu/webtransport' &&
-          (github.ref != 'refs/heads/main' ||
-          startsWith(github.ref, 'refs/tags/'))))
-        run: |
-          deno task build:debug
-      - name: Build Release Windows
-        if: |
-            (runner.os == 'Windows' &&
-            matrix.job == 'test' &&
-            matrix.profile == 'release' &&
-            (github.repository == 'hironichu/webtransport' &&
-            (github.ref == 'refs/heads/main' ||
-            startsWith(github.ref, 'refs/tags/'))))
-        run: |
-            deno task build:debug
       - name: Run deno test (debug)
         if: |
           matrix.job == 'test' && matrix.profile == 'debug' && !startsWith(github.ref, 'refs/tags/')
