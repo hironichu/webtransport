@@ -7,7 +7,6 @@ import {
 } from "./connection.ts";
 import { EventEmitter } from "./deps.ts";
 import {
-    symbols,
     type WebTransportOptions,
     WebTransportOptions as ServerOpts,
 } from "./interface.ts";
