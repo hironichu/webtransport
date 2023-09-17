@@ -80,7 +80,9 @@ jobs:
           tar --exclude=".git*" --exclude=target --exclude=third_party/prebuilt \
               -czvf target/release/webtransport.tar.gz -C .. webtransport
       - name: Setting Up Rust
-        uses: dtolnay/rust-toolchain@nightly   
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: nightly
         if: matrix.job == 'test'
       - name: Install Deno from .land
         if: matrix.os != 'self-hosted'
