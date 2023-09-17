@@ -180,14 +180,19 @@ jobs:
       - name: Run deno test (debug)
         if: |
           matrix.job == 'test' && matrix.profile == 'debug' && !startsWith(github.ref, 'refs/tags/')
+        env:
+            DEVELOPMENT: true
         run: |
           deno task test
+
       - name: Run deno test (release)
         if: |
           (matrix.job == 'test' && matrix.profile == 'release') &&
           (matrix.use_sysroot || (
           github.repository == 'hironichu/webtransport' &&
           github.ref == 'refs/heads/main' && !startsWith(github.ref, 'refs/tags/')))
+        env:
+            DEVELOPMENT: true
         run: |
           deno task test
       - name: Upload release to GitHub
