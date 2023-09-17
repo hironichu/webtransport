@@ -121,12 +121,9 @@ jobs:
             github.ref == 'refs/heads/main'
         with:
           path: |
-            ./target
-            !./target/*/gn_out
             !./target/*/*.dll
             !./target/*/*.so
             !./target/*/*.dylib
-            !./target/*/*.tar.gz
           key: |
             16-cargo-target-${{ matrix.os }}-${{ matrix.profile }}-${{ github.sha }}
       - name: Cache build output (PR)
@@ -135,13 +132,9 @@ jobs:
             matrix.job == 'test' && matrix.profile == 'release'
         with:
           path: |
-            ./target
-            !./dist
-            !./target/*/gn_out
             !./target/*/*.dll
             !./target/*/*.so
             !./target/*/*.dylib
-            !./target/*/*.tar.gz
           key: never_saved
           restore-keys: |
             16-cargo-target-${{ matrix.os }}-${{ matrix.profile }}-

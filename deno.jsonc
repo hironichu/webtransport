@@ -10,7 +10,7 @@
 		"build:debug": "deno task util:clean && cargo build --out-dir ./dist -Z unstable-options",
 		"build:debug-arm": "deno task util:clean && cargo build --out-dir ./dist -Z unstable-options && mv ./dist/dwt.so ./dist/webtransport_aarch64.so",
 		//Utils
-		"util:clean": "deno run --allow-write --allow-read ./utils/clean.ts",
+		"util:clean": "deno run --allow-write --allow-read ./utils/clean.js",
 		"util:fmt" : "deno fmt --ignore=./target --ignore=./.git --ignore=./.github --ignore=./.vscode",
 		"util:lint": "deno lint --unstable --ignore=./target --ignore=./.git --ignore=./.github --ignore=./.vscode",
 		//Tests
