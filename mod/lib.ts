@@ -40,7 +40,7 @@ const symbols = {
 
 //TODO(hironichu): Make this works from internet path
 const options: FetchOptions = {
-    name: "ftlt",
+    name: "webtransport",
     cache: "reloadAll",
     url: "./target/release/",
 };
