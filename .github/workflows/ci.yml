@@ -157,7 +157,7 @@ jobs:
 
       - name: Build Debug
         if: |
-          (startsWith(matrix.os, 'ubuntu') || startsWith(matrix.os, 'macos') ||  startsWith(matrix.os, 'windows')) &&
+          (!startsWith(matrix.os, 'self-hosted')) &&
           (matrix.job == 'test' && matrix.profile == 'debug')
         run: deno task build:debug
 
@@ -170,10 +170,9 @@ jobs:
 
       - name: Build release
         if: |
-          (startsWith(matrix.os, 'ubuntu') || startsWith(matrix.os, 'macos') || startsWith(matrix.os, 'windows')) &&
-          (matrix.job == 'test' && matrix.profile == 'release') && (matrix.use_sysroot ||
-          (github.repository == 'hironichu/webtransport' &&
-          (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/'))))
+          (!startsWith(matrix.os, 'self-hosted')) &&
+          (matrix.job == 'test' && matrix.profile == 'release') &&
+          (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/'))
         run: deno task build:release
 
       - name: Build release Linux ARM
