@@ -14,8 +14,8 @@
         "util:lint": "deno lint --unstable",
         //Tests
         "test": "deno test -A --unstable ",
-		//Non CI build
-		"build": "cargo build"
+        //Non CI build
+        "build": "cargo build"
     },
     "compilerOptions": {
         "checkJs": true,

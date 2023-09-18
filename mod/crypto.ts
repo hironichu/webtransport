@@ -71,12 +71,26 @@ export function GenerateCertKeyFile(
     domainStr: string,
     start: number,
     end: number,
-    path = join(Deno.cwd(), "./certs/"),
+    path?: string,
+    keyFileName?: string,
+    certFileName?: string,
 ) {
+    if (start > end) throw new Error("Invalid date range");
+    path = path ?? join(Deno.cwd(), "./certs/");
+    //check path
+    try {
+        Deno.statSync(path);
+    } catch {
+        console.info("[Webtransport] Creating directory: ", path);
+        Deno.mkdirSync(path, {
+            recursive: true,
+        });
+    }
     const [cert, key] = GenerateCertKey(domainStr, start, end);
     try {
-        const certpath = join(path, `${domainStr}.crt`);
-        const keypath = join(path, `${domainStr}.key`);
+        const certpath = join(path, `${certFileName ?? domainStr + ".crt"}`);
+        const keypath = join(path, `${keyFileName ?? domainStr + ".key"}`);
+
         Deno.writeFileSync(certpath, cert, {
             mode: 0o444,
             // createNew: true,
