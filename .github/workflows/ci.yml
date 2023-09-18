@@ -88,33 +88,15 @@ jobs:
 
       - name: Build Debug
         if: |
-          (!startsWith(matrix.os, 'self-hosted')) &&
           (matrix.job == 'build' && matrix.profile == 'debug')
-        run: deno task build:debug
-
-      - name: Build Debug ARM
-        if: |
-          (startsWith(matrix.os, 'self-hosted')) &&
-          (matrix.job == 'build' && matrix.profile == 'debug') 
-        run: |
-          deno task build:debug
+        run: deno task build:${{matrix.profile}}
 
       - name: Build release
         if: |
-          (!startsWith(matrix.os, 'self-hosted')) &&
           (matrix.job == 'build' && matrix.profile == 'release') &&
           (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/'))
-        run: deno task build:release
+        run: deno task build:${{matrix.profile}}
 
-      - name: Build release Linux ARM
-        if: |
-          (startsWith(matrix.os, 'self-hosted')) &&
-          (matrix.job == 'build' && matrix.profile == 'release') && (
-          (github.repository == 'hironichu/webtransport' &&
-          (github.ref == 'refs/heads/main' ||
-          startsWith(github.ref, 'refs/tags/'))))
-        run: |
-          deno task build:release
           
       - name: Move arm file 
         if: startsWith(matrix.os, 'self-hosted') && matrix.job == 'build'
