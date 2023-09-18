@@ -160,15 +160,7 @@ jobs:
       - name: Creating target structure
         run: |
           mkdir -p target/${{matrix.profile}}
-      - name: Download artifact (release)
-        uses: actions/download-artifact@master
-        if: |
-          (matrix.job == 'test' && matrix.profile == 'release') &&
-          ((github.ref == 'refs/heads/main' && !startsWith(github.ref, 'refs/tags/')))
-      - name: Download artifact (debug)
-        uses: actions/download-artifact@master
-        if: |
-            matrix.job == 'test' && matrix.profile == 'debug' && !startsWith(github.ref, 'refs/tags/')
+      - uses: actions/download-artifact@v3
       - name: Install Deno from .land
         if: matrix.os != 'self-hosted'
         uses: denoland/setup-deno@v1
