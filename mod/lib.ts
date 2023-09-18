@@ -8,7 +8,6 @@ const cache: CacheSetting = Deno.env.has("DEVELOPMENT") ? "reloadAll" : "only";
 const options: FetchOptions = {
     name: "webtransport",
     cache: cache,
-    location: "tmp",
     url: LIB_URL!,
 };
 
