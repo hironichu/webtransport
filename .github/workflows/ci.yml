@@ -159,7 +159,9 @@ jobs:
 
     steps:
       - uses: actions/checkout@master
-
+      - name: Creating target structure
+        run: |
+          mkdir -p target/${{matrix.profile}}
       - name: Download artifact (release)
         uses: actions/download-artifact@master
         if: |
@@ -167,9 +169,7 @@ jobs:
           ((github.ref == 'refs/heads/main' && !startsWith(github.ref, 'refs/tags/')))
         with:
             path: |
-                target/${{matrix.profile}}/*.so
-                target/${{matrix.profile}}/*.dll
-                target/${{matrix.profile}}/*.dylib
+                target/${{matrix.profile}}/
       - name: Download artifact (debug)
         uses: actions/download-artifact@master
         if: |
