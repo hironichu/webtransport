@@ -112,7 +112,7 @@ jobs:
           (matrix.job == 'build' && matrix.profile == 'release') &&
           ((github.ref == 'refs/heads/main' && !startsWith(github.ref, 'refs/tags/')))
         with:
-            name: artifact-release
+            name: release
             path: |
                 target/${{matrix.profile}}/webtransport.dll
                 target/${{matrix.profile}}/libwebtransport.so
@@ -123,7 +123,7 @@ jobs:
         if: |
             matrix.job == 'build' && matrix.profile == 'debug' && !startsWith(github.ref, 'refs/tags/')
         with:
-            name: artifact-debug
+            name: debug
             path: |
                 target/${{matrix.profile}}/webtransport.dll
                 target/${{matrix.profile}}/libwebtransport.so
@@ -161,12 +161,12 @@ jobs:
       - uses: actions/checkout@master
       - name: Creating target structure
         run: |
-          mkdir -p target/${{matrix.profile}}
+          mkdir -p target
 
       - name: Download artifact
         uses: actions/download-artifact@master
         with:
-            path: target/${{matrix.profile}}
+            path: target
 
       - name: Display structure of downloaded files
         run: ls -R
