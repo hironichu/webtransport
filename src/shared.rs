@@ -44,6 +44,14 @@ pub unsafe extern "C" fn proc_send_datagram(connptr: *mut Conn, buf: *const u8, 
         }
     }
 }
+#[no_mangle]
+pub unsafe extern "C" fn proc_init_datagrams(conn_ptr: *mut Conn, buffer: *mut u8, buflen: usize) {
+    assert!(!conn_ptr.is_null());
+
+    let connection = &mut *conn_ptr;
+    connection.buffer = Some(from_raw_parts_mut(buffer, buflen));
+    connection.datagrams();
+}
 
 #[no_mangle]
 pub unsafe extern "C" fn proc_open_bi(connptr: *mut Conn, _buf: *mut u8) {

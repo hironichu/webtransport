@@ -7,16 +7,14 @@
         "example:server": "deno run -A --unstable ./examples/deno/wt_server.ts",
         "example:client": "deno run -A --unstable ./examples/deno/wt_client.ts",
         // Build task
-        "build:release": "deno task util:clean && cargo build --out-dir ./dist -Z unstable-options --release",
-        "build:release-arm": "deno task util:clean && cargo build --out-dir ./dist -Z unstable-options --release && mv ./dist/libwebtransport.so ./dist/libwebtransport_aarch64.so",
-        "build:debug": "deno task util:clean && cargo build --out-dir ./dist -Z unstable-options",
-        "build:debug-arm": "deno task util:clean && cargo build --out-dir ./dist -Z unstable-options && mv ./dist/libwebtransport.so ./dist/libwebtransport_aarch64.so",
+        "build:release": "deno task util:clean && cargo build--release",
+        "build:debug": "deno task util:clean && cargo builds",
         //Utils
         "util:clean": "deno run --allow-write --allow-read ./utils/clean.js",
         "util:fmt": "deno fmt --unstable",
         "util:lint": "deno lint --unstable",
         //Tests
-        "test": "deno test -A --unstable examples/deno/wt_server_test.ts"
+        "test": "deno test -A --unstable "
     },
     "compilerOptions": {
         "checkJs": true,
