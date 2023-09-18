@@ -23,7 +23,7 @@ jobs:
     strategy:
       matrix:
         os: ['macos-latest', 'windows-latest', 'ubuntu-latest']
-        job: [test, build]
+        job: [build]
         profile: [debug, release]
         include:
           - os: 'ubuntu-latest'
@@ -49,7 +49,7 @@ jobs:
         if: |
           startsWith(matrix.os, 'ubuntu') &&
           matrix.profile == 'release' &&
-          matrix.job == 'test' &&
+          matrix.job == 'build' &&
           github.repository == 'hironichu/webtransport' &&
           startsWith(github.ref, 'refs/tags/')
         run: |
@@ -60,8 +60,7 @@ jobs:
       - name: Setting Up Rust
         uses: dtolnay/rust-toolchain@master
         if: |
-          matrix.job != 'lint' &&
-          matrix.job != 'test'
+          matrix.job != 'lint'
         with:
           toolchain: stable
       - name: Install Deno from .land
@@ -136,26 +135,6 @@ jobs:
             (matrix.job == 'build' && matrix.profile == 'debug')
         run: |
             mv target/debug/webtransport.so target/debug/webtransport_aarch64.so
-
-      - name: Run deno test (debug)
-        if: |
-          matrix.job == 'test' && matrix.profile == 'debug' && !startsWith(github.ref, 'refs/tags/')
-        env:
-            DEVELOPMENT: true
-            BUILD_TARGET: debug
-        run: |
-          deno task test
-
-      - name: Run deno test (release)
-        if: |
-          (matrix.job == 'test' && matrix.profile == 'release') &&
-          ((github.ref == 'refs/heads/main' && !startsWith(github.ref, 'refs/tags/')))
-        env:
-            BUILD_TARGET: release
-            DEVELOPMENT: true
-        run: |
-          deno task test
-
       - name: Upload release to GitHub
         uses: softprops/action-gh-release@59c3b4891632ff9a897f99a91d7bc557467a3a22
         if: |
@@ -171,3 +150,40 @@ jobs:
             target/release/webtransport_aarch64.so
             target/release/webtransport.dylib
           draft: true
+  test:
+    needs: build
+    if: |
+      github.event_name == 'push' || !startsWith(github.event.pull_request.head.label, 'hironichu:')
+    strategy:
+      matrix:
+        os: ['macos-latest', 'windows-latest', 'ubuntu-latest']
+        job: [test]
+        profile: [debug, release]
+        include:
+          - os: 'self-hosted'
+            job: test
+            profile: [debug, release]
+            use_sysroot: true
+    name: ${{ matrix.job }} ${{ matrix.profile }} ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 5
+    steps:
+      - name: Run deno test (debug)
+        if: |
+          matrix.job == 'test' && matrix.profile == 'debug' && !startsWith(github.ref, 'refs/tags/')
+
+        env:
+            DEVELOPMENT: true
+            BUILD_TARGET: debug
+        run: |
+          deno task test
+
+      - name: Run deno test (release)
+        if: |
+          (matrix.job == 'test' && matrix.profile == 'release') &&
+          ((github.ref == 'refs/heads/main' && !startsWith(github.ref, 'refs/tags/')))
+        env:
+            BUILD_TARGET: release
+            DEVELOPMENT: true
+        run: |
+          deno task test
