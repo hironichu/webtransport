@@ -23,7 +23,7 @@ jobs:
     strategy:
       matrix:
         include:
-          - os: [macos-latest, windows-latest, 'ubuntu-22.04', 'self-hosted']
+          - os: ['macos-latest', 'windows-latest', 'ubuntu-22.04', 'self-hosted']
             job: test
             profile: [debug]
 
@@ -31,7 +31,7 @@ jobs:
             job: lint
             profile: debug
 
-          - os: [macos-latest, windows-latest, 'ubuntu-22.04']
+          - os: ['macos-latest', 'windows-latest', 'ubuntu-22.04']
             job: build
             profile: [release, debug]
     
