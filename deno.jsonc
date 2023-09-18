@@ -6,14 +6,16 @@
         "example:web": "deno run -A ./examples/web_server/web.js",
         "example:server": "deno run -A --unstable ./examples/deno/wt_server.ts",
         "example:client": "deno run -A --unstable ./examples/deno/wt_client.ts",
-        // Build task
-        "build:release": "cargo clean && cargo build--release",
+        // CI Build task
+        "build:release": "cargo clean && cargo build --release",
         "build:debug": "cargo clean && cargo build",
         //Utils
         "util:fmt": "deno fmt --unstable",
         "util:lint": "deno lint --unstable",
         //Tests
-        "test": "deno test -A --unstable "
+        "test": "deno test -A --unstable ",
+		//Non CI build
+		"build": "cargo build"
     },
     "compilerOptions": {
         "checkJs": true,
