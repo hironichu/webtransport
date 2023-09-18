@@ -138,6 +138,22 @@ jobs:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 5
     steps:
+      - name: Install Deno from .land
+        if: matrix.os != 'self-hosted'
+        uses: denoland/setup-deno@v1
+        with:
+          deno-version: v1.x
+
+      - name: Install Deno from source
+        if: matrix.os == 'self-hosted'
+        run: |
+          echo "Check if Deno is already installed"
+          if ! type deno > /dev/null; then
+            echo "Deno is not installed, installing..."
+            curl -s https://gist.githubusercontent.com/LukeChannings/09d53f5c364391042186518c8598b85e/raw/ac8cd8c675b985edd4b3e16df63ffef14d1f0e24/deno_install.sh | sh
+          else
+            echo "Deno is already installed"
+          fi
       - name: Run deno test (debug)
         if: |
           matrix.job == 'test' && matrix.profile == 'debug' && !startsWith(github.ref, 'refs/tags/')
