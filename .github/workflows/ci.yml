@@ -23,15 +23,15 @@ jobs:
     strategy:
       matrix:
         include:
-          - os: ['macos-latest', 'windows-latest', 'ubuntu-22.04', 'self-hosted']
+          - os: ['macos-latest', 'windows-latest', 'ubuntu-latest', 'self-hosted']
             job: test
             profile: [debug]
 
-          - os: 'ubuntu-22.04'
+          - os: 'ubuntu-latest'
             job: lint
             profile: debug
 
-          - os: ['macos-latest', 'windows-latest', 'ubuntu-22.04']
+          - os: ['macos-latest', 'windows-latest', 'ubuntu-latest']
             job: build
             profile: [release, debug]
     
@@ -40,7 +40,7 @@ jobs:
             profile: [debug, release]
             use_sysroot: true
     name: Build ${{ matrix.job }} ${{ matrix.profile }} ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
+    runs-on: ["${{ matrix.os }}"]
     timeout-minutes: 5
     env:
       CARGO_TERM_COLOR: always
