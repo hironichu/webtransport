@@ -162,15 +162,12 @@ jobs:
       - name: Creating target structure
         run: |
           mkdir -p target/${{matrix.profile}}
-      - name: Download artifact (release)
+
+      - name: Download artifact
         uses: actions/download-artifact@master
-        if: |
-          (matrix.job == 'test' && matrix.profile == 'release') &&
-          ((github.ref == 'refs/heads/main' && !startsWith(github.ref, 'refs/tags/')))
-      - name: Download artifact (debug)
-        uses: actions/download-artifact@master
-        if: |
-            matrix.job == 'test' && matrix.profile == 'debug' && !startsWith(github.ref, 'refs/tags/')
+        with:
+            path: target/${{matrix.profile}}
+
       - name: Display structure of downloaded files
         run: ls -R
       - name: Install Deno from .land
