@@ -9,6 +9,11 @@ const options: FetchOptions = {
     name: "webtransport",
     cache: cache,
     url: LIB_URL!,
+    suffixes: {
+        linux: {
+            "aarch64": "_aarch64.so",
+        },
+    },
 };
 
 export const LIB = async () => await dlopen(options, symbols);
