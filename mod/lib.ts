@@ -11,7 +11,7 @@ const options: FetchOptions = {
     url: LIB_URL!,
     suffixes: {
         linux: {
-            "aarch64": "_aarch64.so",
+            "aarch64": "_aarch64",
         },
     },
 };
