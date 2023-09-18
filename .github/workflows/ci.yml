@@ -18,10 +18,8 @@ concurrency:
 name: Webtransport CI
 jobs:
   build:
-    name: ${{ matrix.job }} ${{ matrix.profile }} ${{ matrix.os }}
     if: |
       github.event_name == 'push' || !startsWith(github.event.pull_request.head.label, 'hironichu:')
-
     strategy:
       matrix:
         include:
@@ -41,7 +39,7 @@ jobs:
             job: build
             profile: [debug, release]
             use_sysroot: true
-        fail-fast: ${{ github.event_name == 'pull_request' || (github.ref != 'refs/heads/main' && !startsWith(github.ref, 'refs/tags/')) }}
+    name: Build ${{ matrix.job }} ${{ matrix.profile }} ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 5
     env:
