@@ -98,11 +98,16 @@ jobs:
         run: deno task build:${{matrix.profile}}
 
           
-      - name: Move arm file 
-        if: startsWith(matrix.os, 'self-hosted') && matrix.job == 'build'
+      - name: Move arm file (release)
+        if: startsWith(matrix.os, 'self-hosted') && matrix.job == 'build' && matrix.profile == 'release'
         run: |
           mv target/${{matrix.profile}}/libwebtransport.so target/${{matrix.profile}}/libwebtransport_aarch64.so
 
+      - name: Move arm file (debug)
+        if: startsWith(matrix.os, 'self-hosted') && matrix.job == 'build' && matrix.profile == 'debug'
+        run: |
+          mv target/${{matrix.profile}}/libwebtransport.so target/${{matrix.profile}}/libwebtransport_aarch64.so
+      
       - name: Upload release to GitHub
         uses: softprops/action-gh-release@59c3b4891632ff9a897f99a91d7bc557467a3a22
         if: |
@@ -114,9 +119,9 @@ jobs:
         with:
           files: |
             target/${{matrix.profile}}/webtransport.dll
-            target/${{matrix.profile}}/webtransport.so
-            target/${{matrix.profile}}/webtransport_aarch64.so
-            target/${{matrix.profile}}/webtransport.dylib
+            target/${{matrix.profile}}/libwebtransport.so
+            target/${{matrix.profile}}/libwebtransport_aarch64.so
+            target/${{matrix.profile}}/libwebtransport.dylib
           draft: true
   test:
     needs: build
