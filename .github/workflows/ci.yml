@@ -34,8 +34,8 @@ jobs:
             job: build
             profile: [debug, release]
             use_sysroot: true
-    name: Build ${{ matrix.job }} ${{ matrix.profile }} ${{ matrix.os }}
-    runs-on: ["${{ matrix.os }}"]
+    name: ${{ matrix.job }} ${{ matrix.profile }} ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 5
     env:
       CARGO_TERM_COLOR: always

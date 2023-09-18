@@ -7,10 +7,9 @@
         "example:server": "deno run -A --unstable ./examples/deno/wt_server.ts",
         "example:client": "deno run -A --unstable ./examples/deno/wt_client.ts",
         // Build task
-        "build:release": "deno task util:clean && cargo build--release",
-        "build:debug": "deno task util:clean && cargo builds",
+        "build:release": "cargo clean && cargo build--release",
+        "build:debug": "cargo clean && cargo build",
         //Utils
-        "util:clean": "deno run --allow-write --allow-read ./utils/clean.js",
         "util:fmt": "deno fmt --unstable",
         "util:lint": "deno lint --unstable",
         //Tests
