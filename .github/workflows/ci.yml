@@ -59,9 +59,11 @@ jobs:
 
       - name: Setting Up Rust
         uses: dtolnay/rust-toolchain@master
+        if: |
+          matrix.job != 'lint' &&
+          matrix.job != 'test'
         with:
           toolchain: stable
-
       - name: Install Deno from .land
         if: matrix.os != 'self-hosted'
         uses: denoland/setup-deno@v1
@@ -80,13 +82,6 @@ jobs:
           fi
       - name: Error on warning
         run: echo "RUSTFLAGS=-D warnings" >> $GITHUB_ENV
-
-      - name: Log versions
-        shell: bash
-        run: |
-          rustc --version
-          cargo --version
-          deno --version
 
       - name: Deno Format
         if: matrix.job == 'lint'
