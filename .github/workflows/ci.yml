@@ -112,6 +112,7 @@ jobs:
           (matrix.job == 'build' && matrix.profile == 'release') &&
           ((github.ref == 'refs/heads/main' && !startsWith(github.ref, 'refs/tags/')))
         with:
+            name: artifact-release
             path: |
                 target/${{matrix.profile}}/webtransport.dll
                 target/${{matrix.profile}}/libwebtransport.so
@@ -122,6 +123,7 @@ jobs:
         if: |
             matrix.job == 'build' && matrix.profile == 'debug' && !startsWith(github.ref, 'refs/tags/')
         with:
+            name: artifact-debug
             path: |
                 target/${{matrix.profile}}/webtransport.dll
                 target/${{matrix.profile}}/libwebtransport.so
@@ -160,7 +162,25 @@ jobs:
       - name: Creating target structure
         run: |
           mkdir -p target/${{matrix.profile}}
-      - uses: actions/download-artifact@v3
+      - name: Download artifact (release)
+        uses: actions/download-artifact@master
+        if: |
+          (matrix.job == 'test' && matrix.profile == 'release') &&
+          ((github.ref == 'refs/heads/main' && !startsWith(github.ref, 'refs/tags/')))
+        with:
+            name: artifact-release
+            path: |
+                target/${{matrix.profile}}/webtransport.dll
+                target/${{matrix.profile}}/libwebtransport.so
+                target/${{matrix.profile}}/libwebtransport_aarch64.so
+                target/${{matrix.profile}}/libwebtransport.dylib
+      - name: Download artifact (debug)
+        uses: actions/download-artifact@master
+        if: |
+            matrix.job == 'test' && matrix.profile == 'debug' && !startsWith(github.ref, 'refs/tags/')
+        with:
+            name: artifact-debug
+
       - name: Install Deno from .land
         if: matrix.os != 'self-hosted'
         uses: denoland/setup-deno@v1
