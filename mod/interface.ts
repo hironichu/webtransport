@@ -51,11 +51,6 @@ export const symbols = {
         result: "pointer",
         callback: true,
     },
-    proc_server_init_streams: {
-        parameters: ["pointer", "buffer", "usize"],
-        result: "void",
-        nonblocking: true,
-    },
     proc_server_close: {
         parameters: ["pointer"],
         result: "usize",
@@ -81,11 +76,6 @@ export const symbols = {
         result: "pointer",
         callback: true,
     },
-    proc_client_init_streams: {
-        parameters: ["pointer", "buffer", "usize"],
-        result: "void",
-        nonblocking: true,
-    },
     proc_client_close: {
         parameters: ["pointer", "pointer"],
         result: "void",
@@ -101,6 +91,11 @@ export const symbols = {
         parameters: ["pointer", "buffer", "usize"],
         result: "void",
         nonblocking: false,
+    },
+    proc_init_datagrams: {
+        parameters: ["pointer", "buffer", "usize"],
+        result: "void",
+        nonblocking: true,
     },
     // Crypto symbols
     proc_gencert: {

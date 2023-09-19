@@ -1,8 +1,8 @@
-use std::{path::Path, slice::from_raw_parts_mut, time::Duration};
+use std::{path::Path, time::Duration};
 use tokio::runtime::Runtime;
 use wtransport::{endpoint, tls::Certificate, Endpoint, ServerConfig};
 
-use crate::{connection::Conn, executor, RUNTIME, SEND_FN, SERVER_CONN_FN};
+use crate::{connection::Conn, RUNTIME, SEND_FN, SERVER_CONN_FN};
 
 pub struct WebTransportServer {
     pub server: Option<Endpoint<endpoint::Server>>,
@@ -138,82 +138,6 @@ pub unsafe extern "C" fn proc_server_listen(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn proc_server_init_streams(
-    clientptr: *mut Conn,
-    buffer: *mut u8,
-    buflen: usize,
-) {
-    assert!(!clientptr.is_null());
-
-    let client = &mut *clientptr;
-    let sender = client.datagram_ch_sender.clone();
-
-    client.buffer = Some(from_raw_parts_mut(buffer, buflen));
-
-    executor::spawn(async move {
-        loop {
-            tokio::select! {
-                _ = client.conn.accept_bi() => {
-                //     match stream {
-                //         Ok(mut stream) => {
-
-                //             println!("Accepted BI stream");
-                //             let bytes_read = stream.1.read(&mut buffer).await.unwrap().unwrap();
-                //             let str_data = std::str::from_utf8(&buffer[..bytes_read]).unwrap();
-
-                //             println!("Received (bi) '{str_data}' from client");
-
-                //             stream.0.write_all(b"ACK").await.unwrap();
-                //         },
-                //         _ => {
-                // 			client.conn.closed().await;
-                // 		}
-                //     };
-                    return client.conn.closed().await;
-                }
-                _ = client.conn.accept_uni() => {
-                    //close the connection until we implement the uni stream
-                    return client.conn.closed().await;
-                //     match stream {
-                //         Ok(mut stream) => {
-                //             println!("Accepted UNI stream");
-                //             let bytes_read = match stream.read(&mut buffer).await.unwrap() {
-                //                 Some(bytes_read) => bytes_read,
-                //                 None => continue,
-                //             };
-
-                //             let str_data = std::str::from_utf8(&buffer[..bytes_read]).unwrap();
-
-                //             println!("Received (uni) '{str_data}' from client");
-
-                //             let mut stream = client.conn.open_uni().await.unwrap().await.unwrap();
-                //             stream.write_all(b"ACK").await.unwrap();
-                //         },
-                //         _ => {
-                // 			client.conn.closed().await;
-                // 		}
-                //     }
-
-                }
-                stream = client.conn.receive_datagram() => {
-                    match stream {
-                        Ok(dgram) => sender.send_async(dgram).await.unwrap(),
-                        _ => {
-                            client.conn.closed().await;
-                            //TODO(hironichu): Send action to Deno to free the pointer and buffer
-                            // SEND_FN.unwrap()(client, std::ptr::null_mut(), 0);
-                            return ;
-                        }
-                    }
-                },
-
-            }
-        }
-    })
-    .detach();
-}
-
-#[no_mangle]
 pub unsafe extern "C" fn proc_server_close(server_ptr: *mut WebTransportServer) -> usize {
     assert!(!server_ptr.is_null());
 
@@ -229,4 +153,7 @@ pub unsafe extern "C" fn proc_server_close(server_ptr: *mut WebTransportServer) 
 pub unsafe extern "C" fn free_all_server(_a: *mut WebTransportServer, _c: *mut Runtime) {}
 
 #[no_mangle]
-pub unsafe extern "C" fn free_server(_: *mut WebTransportServer) {}
+pub unsafe extern "C" fn free_server(_v: *mut WebTransportServer) {
+    let _s = &mut *_v;
+    drop(_s.server.take());
+}

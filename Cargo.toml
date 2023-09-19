@@ -1,5 +1,5 @@
 [package]
-name = "webtransport"
+name = "Webtransport"
 description = "Deno WebTransport FFI library for Deno"
 version = "0.1.0"
 edition = "2021"
@@ -47,6 +47,7 @@ tokio = { version = "=1.32.0", default-features = false, features = [
 wtransport = { git = "https://github.com/hironichu/wtransport", branch = "feat/new", features = [
 	"dangerous-configuration",
 ] }
+wtransport-proto = { git = "https://github.com/hironichu/wtransport", branch = "feat/new" }
 rcgen = "=0.11.1"
 ring = "=0.16.20"
 time = "=0.3.28"

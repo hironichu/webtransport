@@ -30,37 +30,14 @@ if (!Deno.env.get("DEVELOPMENT")) {
     if (json.length === 0) {
         throw new Error("No release found");
     }
-
-    switch (Deno.build.os) {
-        case "windows":
-            LIB_URL = new URL(
-                // json[0].assets.filter((item: { name: string }) =>
-                //     item.name.endsWith(".dll")
-                // )[0].url,
-                json[0].assets[`${LIB_NAME}.dll`][0].url,
-            );
-            break;
-        case "linux":
-            {
-                let filename = LIB_NAME;
-                if (Deno.build.arch === "aarch64") {
-                    filename = `lib${LIB_NAME}_aarch64.so`;
-                } else {
-                    filename = `lib${LIB_NAME}.so`;
-                }
-                LIB_URL = new URL(
-                    json[0].assets[filename][0].url,
-                );
-            }
-            break;
-        case "darwin":
-            LIB_URL = new URL(
-                json[0].assets[`${LIB_NAME}.dylib`][0].url,
-            );
-            break;
-    }
+    LIB_URL = new URL(
+        json[0]
+            .assets[
+                `${LIB_NAME}_${Deno.build.os}_${Deno.build.arch}`
+            ][0].url,
+    );
     LIB_URL!.username = Deno.env.get("DENO_AUTH_TOKENS")!.split("@")[0]!;
 }
-
-LIB_URL = LIB_URL ?? new URL("../dist/", import.meta.url);
+const build_target = Deno.env.get("DEVELOPMENT") ? "debug" : "release";
+LIB_URL = LIB_URL ?? new URL(`../target/${build_target}/`, import.meta.url);
 export default LIB_URL;

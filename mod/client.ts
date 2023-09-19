@@ -84,7 +84,7 @@ export class WebTransport extends EventEmitter<WebTransportEvents> {
     private connection(client: Deno.PointerValue<unknown>) {
         const CONN_BUFFER = new Uint8Array(65536);
         //
-        window.WTLIB.symbols.proc_client_init_streams(
+        window.WTLIB.symbols.proc_init_datagrams(
             client,
             CONN_BUFFER,
             CONN_BUFFER.byteLength,
