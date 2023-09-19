@@ -1,3 +1,5 @@
+// import { FFI_CODES } from "./code.ts";
+
 export class WebTransportDatagramDuplexStream {
     #READ_BUFFER: Uint8Array;
     readonly incomingHighWaterMark = 1;
@@ -64,7 +66,7 @@ export class WebTransportDatagramDuplexStream {
     > = undefined;
 }
 
-export class WebTransportConnection {
+export default class WebTransportConnection {
     state: "connected" | "closed" | "draining" | "failed" | "connecting" =
         "connected" as const;
 

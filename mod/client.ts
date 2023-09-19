@@ -1,8 +1,7 @@
 if (import.meta.main) {
     throw new Error("This module is not meant to be imported.");
 }
-import {
-    WebTransportConnection,
+import WebTransportConnection, {
     WebTransportDatagramDuplexStream,
 } from "./connection.ts";
 import { EventEmitter } from "./deps.ts";
@@ -51,29 +50,42 @@ export class WebTransport extends EventEmitter<WebTransportEvents> {
 
         const certbuf = encodeBuf(certificate);
         const keybuf = encodeBuf(key);
-        this.#CONN_PTR = window.WTLIB.symbols.proc_client_init(
-            this.#NOTIFY_PTR.pointer,
-            _options.keepAlive,
-            _options.maxTimeout,
-            _options.validateCertificate,
-            certbuf[0],
-            certbuf[1],
-            keybuf[0],
-            keybuf[1],
-        );
+        try {
+            this.#CONN_PTR = window.WTLIB.symbols.proc_client_init(
+                this.#NOTIFY_PTR.pointer,
+                _options.keepAlive,
+                _options.maxTimeout,
+                _options.validateCertificate,
+                certbuf[0],
+                certbuf[1],
+                keybuf[0],
+                keybuf[1],
+            );
+        } catch (e) {
+            console.error(e);
+        }
 
         if (!this.#CONN_PTR) {
             throw new Error("Failed to initialize client");
         }
+
+        if (_client instanceof URL) {
+            _client = _client.href;
+        }
+
         const addr = encodeBuf(_client.toString());
-        window.WTLIB.symbols.proc_client_connect(
-            this.#CONN_PTR,
-            this.#CONNECTION_CB.pointer,
-            addr[0],
-            addr[1],
-        );
-        this.#NOTIFY_PTR.ref();
-        this.#CONNECTION_CB.ref();
+        try {
+            window.WTLIB.symbols.proc_client_connect(
+                this.#CONN_PTR,
+                this.#CONNECTION_CB.pointer,
+                addr[0],
+                addr[1],
+            );
+            this.#NOTIFY_PTR.ref();
+            this.#CONNECTION_CB.ref();
+        } catch (e) {
+            console.error("Could not connect to the server", e);
+        }
     }
     /**
      * @callback connection

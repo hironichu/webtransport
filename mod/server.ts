@@ -1,7 +1,7 @@
 if (import.meta.main) {
     throw new Error("This module is not meant to be imported.");
 }
-import { WebTransportConnection } from "./connection.ts";
+import WebTransportConnection from "./connection.ts";
 import { GenerateCertKeyFile } from "./crypto.ts";
 import { EventEmitter } from "./deps.ts";
 import {
@@ -80,7 +80,8 @@ export class WebTransportServer extends EventEmitter<WebTransportServerEvents> {
      * @description This function is called when a new connection is received from the server
      */
     private connection(client: Deno.PointerValue<unknown>) {
-        const CONN_BUFFER = new Uint8Array(65536);
+        const SHARED_BUF = new SharedArrayBuffer(65536);
+        const CONN_BUFFER = new Uint8Array(SHARED_BUF);
         window.WTLIB.symbols.proc_init_datagrams(
             client,
             CONN_BUFFER,

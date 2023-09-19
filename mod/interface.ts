@@ -122,7 +122,5 @@ export const symbols = {
     free_all_client: {
         parameters: ["pointer", "pointer"],
         result: "void",
-    },
+    }
 } as const;
-
-//change the type of window so we add Webtransport and WebtransportServer
