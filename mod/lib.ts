@@ -57,7 +57,9 @@ switch (Deno.build.os) {
 }
 const buildFilename = local
     ? `${fileprefix}webtransport${
-        !Deno.env.has("CI_BUILD") ? "" : `_${Deno.build.arch}_`
+        !Deno.env.has("CI_BUILD") && Deno.build.arch == "aarch64"
+            ? ""
+            : `_${Deno.build.arch}_`
     }${fileExt}`
     : `${fileprefix}webtransport_${Deno.build.arch}_${fileExt}`;
 console.log(buildFilename);
