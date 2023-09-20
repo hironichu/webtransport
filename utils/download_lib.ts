@@ -2,7 +2,7 @@ import "https://deno.land/std@0.201.0/dotenv/load.ts";
 const LIB_NAME = "webtransport";
 let LIB_URL: URL | undefined;
 
-if (!Deno.env.has("DEVELOPMENT")) {
+if (!Deno.env.has("DEVELOPMENT") && !Deno.env.has("CI_BUILD")) {
     const headers = new Headers();
     if (Deno.env.has("DENO_AUTH_TOKENS")) {
         headers.set(
