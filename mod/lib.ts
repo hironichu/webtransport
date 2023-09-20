@@ -58,7 +58,7 @@ switch (Deno.build.os) {
 const buildFilename = `${fileprefix}webtransport${
     !Deno.env.has("CI_BUILD")
         ? ""
-        : `${Deno.build.arch == "aarch64" ? `_${Deno.build.arch}_` : ""}`
+        : `${Deno.build.arch == "aarch64" ? `_${Deno.build.arch}` : ""}`
 }${fileExt}`;
 
 const DURL = new URL(dirpath + buildFilename, currentPath);
