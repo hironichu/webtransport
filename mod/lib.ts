@@ -55,14 +55,12 @@ switch (Deno.build.os) {
         break;
     }
 }
-const buildFilename = local
-    ? `${fileprefix}webtransport${
-        !Deno.env.has("CI_BUILD") && Deno.build.arch == "aarch64"
-            ? ""
-            : `_${Deno.build.arch}_`
-    }${fileExt}`
-    : `${fileprefix}webtransport_${Deno.build.arch}_${fileExt}`;
-console.log(buildFilename);
+const buildFilename = `${fileprefix}webtransport${
+    !Deno.env.has("CI_BUILD")
+        ? ""
+        : `${Deno.build.arch == "aarch64" ? `_${Deno.build.arch}_` : ""}`
+}${fileExt}`;
+
 const DURL = new URL(dirpath + buildFilename, currentPath);
 if (!local) {
     const remoteLIb = await fetch(download_lib, {
