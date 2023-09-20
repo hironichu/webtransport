@@ -189,6 +189,9 @@ jobs:
       - name: Run deno test (debug)
         if: |
           matrix.job == 'test' && matrix.profile == 'debug' && !startsWith(github.ref, 'refs/tags/')
+        env:
+            BUILD_TARGET: debug
+            CI_BUILD: true
         run: |
           deno task test
 
@@ -196,5 +199,8 @@ jobs:
         if: |
           (matrix.job == 'test' && matrix.profile == 'release') &&
           ((github.ref == 'refs/heads/main' && !startsWith(github.ref, 'refs/tags/')))
+        env:
+            BUILD_TARGET: release
+            CI_BUILD: true
         run: |
           deno task test
