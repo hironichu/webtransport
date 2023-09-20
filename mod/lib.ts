@@ -56,8 +56,11 @@ switch (Deno.build.os) {
     }
 }
 const buildFilename = local
-    ? `${fileprefix}webtransport${fileExt}`
+    ? `${fileprefix}webtransport${
+        Deno.env.has("DEVELOPMENT") ? "" : `_${Deno.build.arch}_`
+    }${fileExt}`
     : `${fileprefix}webtransport_${Deno.build.arch}_${fileExt}`;
+console.log(buildFilename);
 const DURL = new URL(dirpath + buildFilename, currentPath);
 if (!local) {
     const remoteLIb = await fetch(download_lib, {
