@@ -2,11 +2,14 @@ use std::{path::Path, time::Duration};
 use tokio::runtime::Runtime;
 use wtransport::{endpoint, tls::Certificate, Endpoint, ServerConfig};
 
-use crate::{connection::Conn, RUNTIME, SEND_FN, SERVER_CONN_FN};
+use crate::{
+    connection::{self, Conn, Server},
+    RUNTIME, SEND_FN, SERVER_CONN_FN,
+};
 
 pub struct WebTransportServer {
     pub server: Option<Endpoint<endpoint::Server>>,
-    pub conn_cb: Option<extern "C" fn(*mut Conn)>,
+    pub conn_cb: Option<extern "C" fn(*mut Conn<connection::Server>)>,
     pub state: Option<bool>,
 }
 
@@ -39,12 +42,15 @@ impl WebTransportServer {
 
                 let session_request = incoming_session.await;
 
-                let accepted_session = match session_request {
-                    Ok(session_request) => session_request,
+                let mut accepted_session = match session_request {
+                    Ok(session_request) => {
+                        let client = Conn::<Server>::new(session_request);
+                        client
+                    }
                     Err(e) => {
                         //TODO(hironichu): Handle error with callback SENDER_FN
                         println!("Error accepting session: {:?}", e);
-                        return;
+                        continue;
                     }
                 };
                 // accepted_session.
@@ -55,16 +61,18 @@ impl WebTransportServer {
                 // 	accepted_session.authority(),
                 // 	accepted_session.path()
                 // );
+
                 match accepted_session.accept().await {
                     Ok(conn) => {
                         // println!("DBG: Sending connection to channel.");
-                        let client = Conn::new(conn);
-                        let client_ptr = Box::into_raw(Box::new(client));
+                        accepted_session.accepted(conn);
+                        let client_ptr = Box::into_raw(Box::new(accepted_session));
                         assert!(!SERVER_CONN_FN.is_none()); //TODO(hironichu): Handle this better.
                         SERVER_CONN_FN.unwrap()(client_ptr);
                     }
                     _ => {
                         println!("Error accepting connection");
+                        continue;
                     }
                 }
             }
@@ -128,7 +136,7 @@ pub unsafe extern "C" fn proc_server_init(
 #[no_mangle]
 pub unsafe extern "C" fn proc_server_listen(
     server_ptr: *mut WebTransportServer,
-    cb: Option<extern "C" fn(*mut Conn)>,
+    cb: Option<extern "C" fn(*mut Conn<connection::Server>)>,
 ) {
     assert!(!server_ptr.is_null());
     let server = &mut *server_ptr;

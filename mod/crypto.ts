@@ -36,16 +36,16 @@ export function GenerateCertKey(
     if (domainStr.length === 0) throw new Error("Invalid domain name");
 
     const domain = encodeBuf(domainStr);
-    const certBUFF = new Uint8Array(1024);
-    const keyBUFF = new Uint8Array(1024);
+    const certBUFF = new Uint8Array(2048);
     const certLenPTR = new Uint32Array(1);
+    const keyBUFF = new Uint8Array(2048);
     const keyLenPTR = new Uint32Array(1);
     try {
         const struct = window.WTLIB.symbols.proc_gencert(
             domain[0],
             domain[1],
-            2,
-            10,
+            start,
+            end,
             certBUFF,
             certLenPTR,
             keyBUFF,

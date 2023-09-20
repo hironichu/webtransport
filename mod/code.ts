@@ -1,3 +1,5 @@
+// This needs to be implemented in some way... might not be the smartest way to do it though
+
 export const C_TYPES = {
     "PROC_OK": 0,
     "PROC_ERR": 1,

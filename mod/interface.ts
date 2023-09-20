@@ -1,7 +1,6 @@
 export const WebTransportOptions = {
     maxTimeout: 10,
     keepAlive: 3,
-    validateCertificate: true,
 };
 
 export const CertificateOptions = {
@@ -26,9 +25,7 @@ export type WebTransportServerOptions =
     & typeof WebTransportServerOptions
     & Partial<CertificateOptions>;
 
-export type WebTransportOptions =
-    & typeof WebTransportOptions
-    & Partial<typeof CertificateOptions>;
+export type WebTransportOptions = typeof WebTransportOptions;
 export const symbols = {
     // Server symbols
     proc_server_init: {
@@ -62,11 +59,6 @@ export const symbols = {
             "function",
             "u64", //KeepAlive
             "u64", //MaxTimeout
-            "bool", //Certcheck
-            "buffer", //Cert
-            "usize", //CertLen
-            "buffer", //Key
-            "usize", //KeyLen
         ],
         result: "pointer",
         callback: true,
@@ -122,5 +114,5 @@ export const symbols = {
     free_all_client: {
         parameters: ["pointer", "pointer"],
         result: "void",
-    }
+    },
 } as const;

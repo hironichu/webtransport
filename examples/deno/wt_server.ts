@@ -13,7 +13,7 @@ if (typeof certFile !== "string" || typeof keyFile !== "string") {
 try {
     Deno.statSync(certFile);
     Deno.statSync(keyFile);
-} catch (e) {
+} catch {
     console.error("Invalid certFile or keyFile");
     Deno.exit(1);
 }

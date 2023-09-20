@@ -10,7 +10,7 @@ import {
 } from "./interface.ts";
 import { encodeBuf } from "./utils.ts";
 
-type WebTransportServerEvents = {
+export type WebTransportServerEvents = {
     listening: [Event];
     connection: [WebTransportConnection];
     event: [MessageEvent];

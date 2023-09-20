@@ -1,11 +1,10 @@
 //TO BE IMPLEMENTED
 import "../../mod/mod.ts";
 
-//get the connect address from args 1 
+//get the connect address from args 1
 const connectAddr = Deno.args[0] ?? "https://localhost:4433";
 
 const client = new WebTransport(connectAddr, {
-    validateCertificate: false,
     maxTimeout: 10,
     keepAlive: 3,
 });

@@ -1,11 +1,14 @@
-use crate::{connection::Conn, SEND_FN};
+use crate::{
+    connection::{Conn, Server},
+    SEND_FN,
+};
 use core::panic;
 use std::slice::from_raw_parts_mut;
 use tokio::runtime::Runtime;
 use wtransport::error::SendDatagramError;
 
 #[no_mangle]
-pub unsafe extern "C" fn proc_recv_datagram(conn_ptr: *mut Conn) -> usize {
+pub unsafe extern "C" fn proc_recv_datagram(conn_ptr: *mut Conn<Server>) -> usize {
     let client = &mut *conn_ptr;
     match client.datagram_ch_receiver.recv() {
         Ok(dgram) => {
@@ -18,12 +21,16 @@ pub unsafe extern "C" fn proc_recv_datagram(conn_ptr: *mut Conn) -> usize {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn proc_send_datagram(connptr: *mut Conn, buf: *const u8, buflen: u32) {
+pub unsafe extern "C" fn proc_send_datagram(
+    connptr: *mut Conn<Server>,
+    buf: *const u8,
+    buflen: u32,
+) {
     assert!(!connptr.is_null());
 
     let client = &mut *connptr;
     let buf = ::std::slice::from_raw_parts(buf, buflen as usize);
-    match client.conn.send_datagram(buf) {
+    match client.conn.as_ref().unwrap().send_datagram(buf) {
         Ok(_) => {}
         Err(err) => {
             //TODO: Handle error better
@@ -45,7 +52,11 @@ pub unsafe extern "C" fn proc_send_datagram(connptr: *mut Conn, buf: *const u8, 
     }
 }
 #[no_mangle]
-pub unsafe extern "C" fn proc_init_datagrams(conn_ptr: *mut Conn, buffer: *mut u8, buflen: usize) {
+pub unsafe extern "C" fn proc_init_datagrams(
+    conn_ptr: *mut Conn<Server>,
+    buffer: *mut u8,
+    buflen: usize,
+) {
     assert!(!conn_ptr.is_null());
 
     let connection = &mut *conn_ptr;
@@ -54,7 +65,7 @@ pub unsafe extern "C" fn proc_init_datagrams(conn_ptr: *mut Conn, buffer: *mut u
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn proc_open_bi(connptr: *mut Conn, _buf: *mut u8) {
+pub unsafe extern "C" fn proc_open_bi(connptr: *mut Conn<Server>, _buf: *mut u8) {
     assert!(!connptr.is_null());
 
     let _client = &mut *connptr;
@@ -75,7 +86,7 @@ pub unsafe extern "C" fn proc_open_bi(connptr: *mut Conn, _buf: *mut u8) {
     // }
 }
 #[no_mangle]
-pub unsafe extern "C" fn free_conn(_: *mut Conn) {}
+pub unsafe extern "C" fn free_conn(_: *mut Conn<Server>) {}
 
 #[no_mangle]
 pub unsafe extern "C" fn free_runtime(_: *mut Runtime) {}

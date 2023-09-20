@@ -1,11 +1,14 @@
-use std::{path::Path, time::Duration};
-use wtransport::{endpoint, tls::Certificate, ClientConfig, Endpoint};
+use std::time::Duration;
+use wtransport::{endpoint, ClientConfig, Endpoint};
 
-use crate::{connection::Conn, CLIENT_CONN_FN, RUNTIME, SEND_FN};
+use crate::{
+    connection::{self, Client, Conn},
+    CLIENT_CONN_FN, RUNTIME, SEND_FN,
+};
 
 pub struct WebTransportClient {
     pub client: Option<Endpoint<endpoint::Client>>,
-    pub conn_cb: Option<extern "C" fn(*mut Conn)>,
+    pub conn_cb: Option<extern "C" fn(*mut Conn<connection::Client>)>,
     pub state: Option<bool>,
 }
 
@@ -35,7 +38,7 @@ impl WebTransportClient {
         RUNTIME.block_on(async move {
             match self.client.as_mut().unwrap().connect(url).await {
                 Ok(conn) => {
-                    let client = Conn::new(conn);
+                    let client = Conn::<Client>::new(conn);
                     let client_ptr = Box::into_raw(Box::new(client));
                     assert!(!CLIENT_CONN_FN.is_none());
                     CLIENT_CONN_FN.unwrap()(client_ptr);
@@ -53,11 +56,6 @@ pub unsafe extern "C" fn proc_client_init(
     send_func: Option<extern "C" fn(u32, *mut u8, u32)>,
     keepalive: u64,
     timeout: u64,
-    certcheck: bool,
-    cert_path: *const u8,
-    cert_path_len: usize,
-    key_path: *const u8,
-    key_path_len: usize,
 ) -> *mut WebTransportClient {
     assert!(!send_func.is_none());
 
@@ -71,30 +69,14 @@ pub unsafe extern "C" fn proc_client_init(
     } else {
         Some(Duration::from_secs(timeout))
     };
-    //print the paths for debug
-    let config = if certcheck {
-        let cert_path = ::std::slice::from_raw_parts(cert_path, cert_path_len);
-        let key_path = ::std::slice::from_raw_parts(key_path, key_path_len);
-        let cert_path = Path::new(std::str::from_utf8(cert_path).unwrap());
-        let key_path = Path::new(std::str::from_utf8(key_path).unwrap());
 
-        let _certificates = Certificate::load(cert_path, key_path).unwrap();
-        ClientConfig::builder()
-            .with_bind_config(wtransport::config::IpBindConfig::InAddrAnyDual)
-            .with_native_certs()
-            .keep_alive_interval(keepalive)
-            .max_idle_timeout(timeout)
-            .unwrap()
-            .build()
-    } else {
-        ClientConfig::builder()
-            .with_bind_config(wtransport::config::IpBindConfig::InAddrAnyDual)
-            .with_no_cert_validation()
-            .keep_alive_interval(keepalive)
-            .max_idle_timeout(timeout)
-            .unwrap()
-            .build()
-    };
+    let config = ClientConfig::builder()
+        .with_bind_config(wtransport::config::IpBindConfig::InAddrAnyDual)
+        .with_no_cert_validation()
+        .keep_alive_interval(keepalive)
+        .max_idle_timeout(timeout)
+        .unwrap()
+        .build();
     let client = WebTransportClient::new(send_func, config);
     match client {
         Ok(client) => Box::into_raw(Box::new(client)),
@@ -106,7 +88,7 @@ pub unsafe extern "C" fn proc_client_init(
 #[no_mangle]
 pub unsafe extern "C" fn proc_client_connect(
     client: *mut WebTransportClient,
-    cb: Option<extern "C" fn(*mut Conn)>,
+    cb: Option<extern "C" fn(*mut Conn<Client>)>,
     url: *const u8,
     url_len: usize,
 ) {
@@ -121,7 +103,7 @@ pub unsafe extern "C" fn proc_client_connect(
 #[no_mangle]
 pub unsafe extern "C" fn proc_client_close(
     client_ptr: *mut WebTransportClient,
-    conn: *mut Conn,
+    conn: *mut Conn<Client>,
 ) -> usize {
     assert!(!client_ptr.is_null());
     assert!(!conn.is_null());
@@ -135,7 +117,7 @@ pub unsafe extern "C" fn proc_client_close(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn free_all_client(_a: *mut WebTransportClient, _b: *mut Conn) {
+pub unsafe extern "C" fn free_all_client(_a: *mut WebTransportClient, _b: *mut Conn<Client>) {
     let _con = &mut *_b;
     drop(_con.datagram_ch_receiver.drain());
     drop(_con.datagram_ch_sender.downgrade());

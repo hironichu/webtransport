@@ -67,11 +67,15 @@ export class WebTransportDatagramDuplexStream {
 }
 
 export default class WebTransportConnection {
-    state: "connected" | "closed" | "draining" | "failed" | "connecting" =
-        "connected" as const;
+    state:
+        | "connected"
+        | "closed"
+        | "draining"
+        | "failed"
+        | "connecting" = "connected" as const;
 
-    #CONN_PTR: Deno.PointerValue<unknown>;
-    public datagrams: WebTransportDatagramDuplexStream;
+    readonly #CONN_PTR: Deno.PointerValue<unknown>;
+    public readonly datagrams: WebTransportDatagramDuplexStream;
     constructor(
         pointer: Deno.PointerValue<unknown>,
         buffer: Uint8Array,

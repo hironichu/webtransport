@@ -43,23 +43,17 @@ export class WebTransport extends EventEmitter<WebTransportEvents> {
 
     constructor(
         _client: URL | string,
-        _options: typeof WebTransportOptions = ServerOpts,
+        _options: WebTransportOptions = ServerOpts,
     ) {
         super();
-        const [certificate, key] = this.checkArgs(_options);
+        // Server Certificate check is not implemented yet
+        // const [certificate, key] = this.checkArgs(_options);
 
-        const certbuf = encodeBuf(certificate);
-        const keybuf = encodeBuf(key);
         try {
             this.#CONN_PTR = window.WTLIB.symbols.proc_client_init(
                 this.#NOTIFY_PTR.pointer,
                 _options.keepAlive,
                 _options.maxTimeout,
-                _options.validateCertificate,
-                certbuf[0],
-                certbuf[1],
-                keybuf[0],
-                keybuf[1],
             );
         } catch (e) {
             console.error(e);
@@ -169,25 +163,6 @@ export class WebTransport extends EventEmitter<WebTransportEvents> {
         }
 
         this.emit("close", new CloseEvent("close"));
-    }
-
-    private checkArgs(_options: WebTransportOptions) {
-        let certificate = "";
-        let key = "";
-        if (_options.certFile && _options.keyFile) {
-            Deno.statSync(_options.certFile);
-            Deno.statSync(_options.keyFile);
-            //
-            certificate = _options.certFile;
-            key = _options.keyFile;
-            return [certificate, key];
-        }
-        if (_options.validateCertificate == false) {
-            return ["", ""];
-        }
-        throw new TypeError(
-            "Missing necessary parameters",
-        );
     }
 }
 

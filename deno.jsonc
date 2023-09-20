@@ -3,9 +3,10 @@
     },
     "tasks": {
         //Examples
-        "example:web": "deno run -A ./examples/web_server/web.js",
-        "example:server": "deno run -A --unstable ./examples/deno/wt_server.ts",
-        "example:client": "deno run -A --unstable ./examples/deno/wt_client.ts",
+        "demo:web": "deno run -A ./examples/web_server/web.js",
+        "demo:server": "deno run -A --unstable ./examples/deno/wt_server.ts",
+        "demo:client": "deno run -A --unstable ./examples/deno/wt_client.ts",
+		"demo:gencert": "deno run -A --unstable ./examples/deno/wt_gencert.ts",
         // CI Build task
         "build:release": "cargo clean && cargo build --release",
         "build:debug": "cargo clean && cargo build",
