@@ -1,5 +1,4 @@
-use crate::executor;
-use flume::{Receiver, Sender};
+use crate::RUNTIME;
 use std::{collections::HashMap, future::Future, marker::PhantomData, pin::Pin};
 use wtransport::{datagram::Datagram, endpoint::SessionRequest, Connection};
 use wtransport_proto::varint::VarInt;
@@ -52,55 +51,34 @@ pub struct Conn<Side: std::marker::Send> {
     pub conn: Option<Connection>,
     pub accepted_session: Option<SessionRequest>,
     pub buffer: Option<&'static mut [u8]>,
-    pub datagram_ch_sender: Sender<Datagram>,
-    pub datagram_ch_receiver: Receiver<Datagram>,
     _marker: PhantomData<Side>,
 }
 
 impl<Side: std::marker::Send> Conn<Side> {
-    pub fn datagrams(&'static mut self) {
-        executor::spawn(async move {
+    pub fn datagrams(&mut self) -> Result<Datagram, usize> {
+        let stream = RUNTIME.block_on(async move {
             let conn = self.conn.as_ref().unwrap();
-            loop {
-                tokio::select! {
-                    stream = conn.receive_datagram() => {
-                        match stream {
-                            Ok(dgram) => match self.datagram_ch_sender.send_async(dgram).await {
-                                Ok(_) => {}
-                                Err(_) => {
-                                    //We should close the connection from Deno.
-                                    conn.closed().await;
-                                    // SEND_FN.unwrap()(client, std::ptr::null_mut(), 0);
-                                    return ;
-                                }
-                            },
-                            _ => {
-                                 //We should close the connection from Deno.
-                                 conn.closed().await;
-                                //TODO(hironichu): Send action to Deno to free the pointer and buffer
-                                // SEND_FN.unwrap()(client, std::ptr::null_mut(), 0);
-                                return ;
-                            }
-                        }
-                    },
-
-                }
+            conn.receive_datagram().await
+        });
+        match stream {
+            Ok(dgram) => Ok(dgram),
+            _ => {
+                //We should close the connection from Deno.
+                // conn.closed().await;
+                //TODO(hironichu): Send action to Deno to free the pointer and buffer
+                // SEND_FN.unwrap()(client, std::ptr::null_mut(), 0);
+                Err(0)
             }
-        })
-        .detach();
+        }
     }
 }
 
 impl Conn<Server> {
     pub(crate) fn new(accepted_session: SessionRequest) -> Self {
-        let (sender, receiver) = flume::bounded(2);
-
         Self {
             conn: None,
             accepted_session: Some(accepted_session),
             buffer: None,
-            datagram_ch_sender: sender,
-            datagram_ch_receiver: receiver,
             _marker: PhantomData,
         }
     }
@@ -124,14 +102,10 @@ impl Conn<Server> {
 
 impl Conn<Client> {
     pub(crate) fn new(conn: Connection) -> Self {
-        let (sender, receiver) = flume::bounded(2);
-
         Self {
             conn: Some(conn),
             accepted_session: None,
             buffer: None,
-            datagram_ch_sender: sender,
-            datagram_ch_receiver: receiver,
             _marker: PhantomData,
         }
     }

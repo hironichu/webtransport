@@ -7,18 +7,18 @@ use std::slice::from_raw_parts_mut;
 use tokio::runtime::Runtime;
 use wtransport::error::SendDatagramError;
 
-#[no_mangle]
-pub unsafe extern "C" fn proc_recv_datagram(conn_ptr: *mut Conn<Server>) -> usize {
-    let client = &mut *conn_ptr;
-    match client.datagram_ch_receiver.recv() {
-        Ok(dgram) => {
-            from_raw_parts_mut(client.buffer.as_mut().unwrap().as_mut_ptr(), dgram.len())
-                .clone_from_slice(&dgram);
-            dgram.len()
-        }
-        Err(_) => 0,
-    }
-}
+// #[no_mangle]
+// pub unsafe extern "C" fn proc_recv_datagram(conn_ptr: *mut Conn<Server>) -> usize {
+//     let client = &mut *conn_ptr;
+//     match client.datagram_ch_receiver.recv() {
+//         Ok(dgram) => {
+//             from_raw_parts_mut(client.buffer.as_mut().unwrap().as_mut_ptr(), dgram.len())
+//                 .clone_from_slice(&dgram);
+//             dgram.len()
+//         }
+//         Err(_) => 0,
+//     }
+// }
 
 #[no_mangle]
 pub unsafe extern "C" fn proc_send_datagram(
@@ -51,17 +51,32 @@ pub unsafe extern "C" fn proc_send_datagram(
         }
     }
 }
+// #[no_mangle]
+// pub unsafe extern "C" fn proc_init_datagrams(
+//     conn_ptr: *mut Conn<Server>,
+//     buffer: *mut u8,
+//     buflen: usize,
+// ) {
+//     assert!(!conn_ptr.is_null());
+
+//     let connection = &mut *conn_ptr;
+//     connection.buffer = Some(from_raw_parts_mut(buffer, buflen));
+//     // connection.datagrams();
+// }
+
 #[no_mangle]
-pub unsafe extern "C" fn proc_init_datagrams(
-    conn_ptr: *mut Conn<Server>,
-    buffer: *mut u8,
-    buflen: usize,
-) {
+pub unsafe extern "C" fn proc_recv_datagram(conn_ptr: *mut Conn<Server>, buff: *mut u8) -> usize {
     assert!(!conn_ptr.is_null());
 
-    let connection = &mut *conn_ptr;
-    connection.buffer = Some(from_raw_parts_mut(buffer, buflen));
-    connection.datagrams();
+    let client = &mut *conn_ptr;
+
+    match client.datagrams() {
+        Ok(dgram) => {
+            from_raw_parts_mut(buff, dgram.len()).clone_from_slice(&dgram);
+            dgram.len()
+        }
+        Err(_) => 0,
+    }
 }
 
 #[no_mangle]

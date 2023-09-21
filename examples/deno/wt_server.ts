@@ -18,21 +18,15 @@ try {
     Deno.exit(1);
 }
 
-const server = new WebTransportServer(4433, {
+const server = new WebTransportServer("https://localhost:4433", {
     certFile: "./certs/localhost.crt",
     keyFile: "./certs/localhost.key",
     maxTimeout: 10,
     keepAlive: 3,
 });
 
-console.log("Server created");
-server.on("listening", (e) => {
-    console.log("Listening OUT", e);
-});
+server.listen();
 
-server.on("connection", async (connection) => {
-    console.log("Connection ");
-    for await (const read of connection.datagrams.readable) {
-        console.log(read);
-    }
+server.on("connection", (_) => {
+    console.log(server.connections.size);
 });

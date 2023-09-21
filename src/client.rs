@@ -110,15 +110,9 @@ pub unsafe extern "C" fn proc_client_close(
     let client = &mut *client_ptr;
     let conn = &mut *conn;
     client.state = Some(false);
-    RUNTIME.block_on(async move {
-        conn.closed().await;
-    });
+    RUNTIME.block_on(async move { conn.closed().await });
     0
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn free_all_client(_a: *mut WebTransportClient, _b: *mut Conn<Client>) {
-    let _con = &mut *_b;
-    drop(_con.datagram_ch_receiver.drain());
-    drop(_con.datagram_ch_sender.downgrade());
-}
+pub unsafe extern "C" fn free_all_client(_a: *mut WebTransportClient, _b: *mut Conn<Client>) {}

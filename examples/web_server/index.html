@@ -28,17 +28,25 @@
 	<!-- TBA Stats -->
 	<script type="module">
 		const decoder = new TextDecoder();
+		const res = [];
 		async function readData(readable) {
+			console.log("start reading")
 			const reader = readable.getReader();
 			while (true) {
 				const { value, done } = await reader.read();
 				if (done) {
 					break;
 				}
-				console.log(decoder.decode(value));
+				res.push(decoder.decode(value));
 			}
 		}
-
+		window.TESTFN = () => {
+			//Check if there are dups in the res array
+			const dups = res.filter((item, index) => res.indexOf(item) != index);
+			if (dups.length > 0) {
+				console.log("DUPS : ", dups);
+			}
+		}
 		window.serveurDEMO = null;
 		window.writeDDBN = null;
 		const webtransport = new WebTransport('https://HOST_IP:4433/', {
@@ -63,6 +71,7 @@
 			let int2 = 0;
 			const encoder = new TextEncoder();
 			console.log("start sending")
+			performance.mark("start");
 			while (1) {
 				if (int2 === 500) {
 					break;

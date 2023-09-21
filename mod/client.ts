@@ -4,28 +4,17 @@ if (import.meta.main) {
 import WebTransportConnection, {
     WebTransportDatagramDuplexStream,
 } from "./connection.ts";
-import { EventEmitter } from "./deps.ts";
+
 import {
     type WebTransportOptions,
     WebTransportOptions as ServerOpts,
 } from "./interface.ts";
 import { encodeBuf } from "./utils.ts";
 
-type WebTransportEvents = {
-    connected: [WebTransportConnection];
-    ready: [WebTransportConnection];
-    // Other Event
-    event: [MessageEvent];
-    // Error Event
-    error: [ErrorEvent | string];
-    // Close Event
-    close: [CloseEvent];
-};
-export class WebTransport extends EventEmitter<WebTransportEvents> {
+export class WebTransport {
     #CONN_PTR: Deno.PointerValue<unknown> | undefined;
     #STATE_PTR = new Uint32Array(1);
-    public datagrams!: WebTransportDatagramDuplexStream;
-    conn?: WebTransportConnection;
+
     #NOTIFY_PTR = new Deno.UnsafeCallback(
         {
             parameters: ["u32", "pointer", "u32"],
@@ -33,6 +22,7 @@ export class WebTransport extends EventEmitter<WebTransportEvents> {
         },
         this.notify.bind(this),
     );
+
     #CONNECTION_CB = new Deno.UnsafeCallback(
         {
             parameters: ["pointer"],
@@ -40,14 +30,25 @@ export class WebTransport extends EventEmitter<WebTransportEvents> {
         },
         this.connection.bind(this),
     );
+    public datagrams!: WebTransportDatagramDuplexStream;
 
+    public conn?: WebTransportConnection;
+    /**
+     * @typedef {Deno.NetAddr} remote
+     * @property {string} transport
+     * @property {string} hostname
+     * @property {number} port
+     * @description This object contains the remote address of the server
+     */
+    protected remote: URL;
     constructor(
         _client: URL | string,
         _options: WebTransportOptions = ServerOpts,
     ) {
-        super();
-        // Server Certificate check is not implemented yet
-        // const [certificate, key] = this.checkArgs(_options);
+        /// if _client is string convert it to an URL
+        if (typeof _client === "string") {
+            _client = new URL(_client);
+        }
 
         try {
             this.#CONN_PTR = window.WTLIB.symbols.proc_client_init(
@@ -62,24 +63,12 @@ export class WebTransport extends EventEmitter<WebTransportEvents> {
         if (!this.#CONN_PTR) {
             throw new Error("Failed to initialize client");
         }
+        /// Set the current remote to the client
+        this.remote = _client;
 
-        if (_client instanceof URL) {
-            _client = _client.href;
-        }
-
-        const addr = encodeBuf(_client.toString());
-        try {
-            window.WTLIB.symbols.proc_client_connect(
-                this.#CONN_PTR,
-                this.#CONNECTION_CB.pointer,
-                addr[0],
-                addr[1],
-            );
-            this.#NOTIFY_PTR.ref();
-            this.#CONNECTION_CB.ref();
-        } catch (e) {
-            console.error("Could not connect to the server", e);
-        }
+        /// ref the callback to prevent it from being garbage collected
+        this.#NOTIFY_PTR.ref();
+        this.#CONNECTION_CB.ref();
     }
     /**
      * @callback connection
@@ -89,13 +78,7 @@ export class WebTransport extends EventEmitter<WebTransportEvents> {
      */
     private connection(client: Deno.PointerValue<unknown>) {
         const CONN_BUFFER = new Uint8Array(65536);
-        //
-        window.WTLIB.symbols.proc_init_datagrams(
-            client,
-            CONN_BUFFER,
-            CONN_BUFFER.byteLength,
-        );
-        //Setting up the stream for the new connection
+
         const conn = new WebTransportConnection(
             client,
             CONN_BUFFER,
@@ -105,7 +88,6 @@ export class WebTransport extends EventEmitter<WebTransportEvents> {
             conn,
             CONN_BUFFER,
         );
-        this.emit("ready", conn);
     }
     /**
      * @callback notify
@@ -130,39 +112,47 @@ export class WebTransport extends EventEmitter<WebTransportEvents> {
             buffer as unknown as NonNullable<Deno.PointerValue>,
             buflen,
         );
-        const event = new MessageEvent("message", {
+        const _event = new MessageEvent("message", {
             data: pointer,
         });
 
         //TODO(hironichu): Implement Error/event catching from rust to free the memory once a connection drop or if something else happens.
-        this.emit("event", event);
     }
-    ready = new Promise<void>((resolve) => {
-        this.once("ready", (conn) => {
-            conn.state = "connected";
-            this.conn = conn;
-            resolve();
-        });
-    });
 
-    async close() {
+    ready = () =>
+        new Promise<this>((resolve, reject) => {
+            try {
+                const encoded = encodeBuf(this.remote.href);
+                window.WTLIB.symbols.proc_client_connect(
+                    this.#CONN_PTR!,
+                    this.#CONNECTION_CB.pointer,
+                    encoded[0],
+                    encoded[1],
+                );
+
+                resolve(this);
+            } catch (e) {
+                reject(e);
+            }
+        });
+
+    close() {
         this.#NOTIFY_PTR.unref();
         this.#NOTIFY_PTR.close();
         this.#CONNECTION_CB.unref();
         this.#CONNECTION_CB.close();
+        //close the datagram
+        this.datagrams.readable.cancel("Connection closed");
+        this.datagrams.writable.abort("Connection closed");
+
         if (this.#CONN_PTR) {
-            await window.WTLIB.symbols.proc_client_close(
-                this.#CONN_PTR,
-                this.conn!.pointer,
-            );
-            //free the Client pointer
-            window.WTLIB.symbols.free_all_client(
+            window.WTLIB.symbols.proc_client_close(
                 this.#CONN_PTR,
                 this.conn!.pointer,
             );
         }
 
-        this.emit("close", new CloseEvent("close"));
+        return true;
     }
 }
 

@@ -23,12 +23,18 @@ export class WebTransportDatagramDuplexStream {
                         chunk,
                         chunk.byteLength,
                     );
+
+                    return chunk.byteLength;
                 } catch (e) {
                     console.error(e);
+                    return -1;
                 }
             },
             abort() {
                 console.error("[Error] Write aborted");
+            },
+            close() {
+                // console.log("[Info] Write closed");
             },
         });
     }
@@ -40,6 +46,7 @@ export class WebTransportDatagramDuplexStream {
                 try {
                     const nread = await window.WTLIB.symbols.proc_recv_datagram(
                         connection.pointer!,
+                        buffer,
                     );
                     if (nread > 0) {
                         controller.enqueue(
@@ -51,19 +58,10 @@ export class WebTransportDatagramDuplexStream {
                 }
             },
             cancel() {
-                console.error("[Error] Stream cancelled");
             },
         });
         return StreamBuffer;
     }
-
-    //TODO(hironichu): implement the rest of the methods
-    public incomingBidirectionalStreams?: ReadableStream<
-        ReadableStream<Uint8Array>
-    > = undefined;
-    public incomingUnidirectionalStreams?: ReadableStream<
-        ReadableStream<Uint8Array>
-    > = undefined;
 }
 
 export default class WebTransportConnection {
@@ -72,7 +70,7 @@ export default class WebTransportConnection {
         | "closed"
         | "draining"
         | "failed"
-        | "connecting" = "connected" as const;
+        | "connecting" = "closed" as const;
 
     readonly #CONN_PTR: Deno.PointerValue<unknown>;
     public readonly datagrams: WebTransportDatagramDuplexStream;
@@ -80,12 +78,22 @@ export default class WebTransportConnection {
         pointer: Deno.PointerValue<unknown>,
         buffer: Uint8Array,
     ) {
-        this.state = "closed";
+        this.state = "connected";
         this.#CONN_PTR = pointer;
         this.datagrams = new WebTransportDatagramDuplexStream(this, buffer);
     }
+
+    //TODO(hironichu): implement the rest of the methods
+    public readonly incomingBidirectionalStreams?: ReadableStream<
+        ReadableStream<Uint8Array>
+    > = undefined;
+    public readonly incomingUnidirectionalStreams?: ReadableStream<
+        ReadableStream<Uint8Array>
+    > = undefined;
+
     async close() {
-        return await window.WTLIB.symbols.proc_client_close(
+        this.state = "closed";
+        await window.WTLIB.symbols.proc_client_close(
             this.#CONN_PTR,
             this.pointer,
         );

@@ -75,7 +75,7 @@ export const symbols = {
     },
     // Shared symbols
     proc_recv_datagram: {
-        parameters: ["pointer"],
+        parameters: ["pointer", "buffer"],
         result: "usize",
         nonblocking: true,
     },
@@ -84,11 +84,11 @@ export const symbols = {
         result: "void",
         nonblocking: false,
     },
-    proc_init_datagrams: {
-        parameters: ["pointer", "buffer", "usize"],
-        result: "void",
-        nonblocking: true,
-    },
+    // proc_init_datagrams: {
+    //     parameters: ["pointer", "buffer", "usize"],
+    //     result: "void",
+    //     nonblocking: true,
+    // },
     // Crypto symbols
     proc_gencert: {
         parameters: [

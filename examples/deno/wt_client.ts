@@ -9,7 +9,9 @@ const client = new WebTransport(connectAddr, {
     keepAlive: 3,
 });
 
-await client.ready;
+// console.log(client);
+
+await client.ready();
 console.log("Client connected");
 const writer = client.datagrams.writable.getWriter();
 writer?.write(new Uint8Array([1, 2, 3, 4, 5]));
@@ -17,3 +19,8 @@ writer?.write(new Uint8Array([1, 2, 3, 4, 5]));
 writer?.write(new Uint8Array([1, 2, 3, 4, 5]));
 writer?.write(new Uint8Array([1, 2, 3, 4, 5]));
 writer?.write(new Uint8Array([1, 2, 3, 4, 5]));
+
+// //await messages
+for await (const read of client.datagrams.readable) {
+    console.log(read);
+}

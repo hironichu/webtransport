@@ -11,8 +11,8 @@ if (window.WTLIB_STATE) {
 
 window.WTLIB = await LIB();
 window.WTLIB_STATE = true;
-import { WebTransportServer as WebTransportServerT } from "./server.ts";
-import { WebTransport as WebTransportT } from "./client.ts";
+import { WebTransportServer } from "./server.ts";
+import { WebTransport } from "./client.ts";
 
 declare global {
     export interface Window {
@@ -23,25 +23,27 @@ declare global {
 
 declare global {
     namespace globalThis {
-        export class WebTransport extends WebTransportT {
-            constructor(
+        const WebTransport: {
+            readonly prototype: WebTransport;
+            new (
                 _client: URL | string,
-                _options: WebTransportOptions,
-            );
-        }
-        export class WebTransportServer extends WebTransportServerT {
-            constructor(
-                _port: number,
+                _options?: WebTransportOptions,
+            ): WebTransport;
+        };
+        const WebTransportServer: {
+            readonly prototype: WebTransportServer;
+            new (
+                _url: URL | string,
                 _options: WebTransportServerOptions,
-            );
-        }
+            ): WebTransportServer;
+        };
     }
 }
 
 ((globalThis) => {
     Object.assign(globalThis, {
-        WebTransport: WebTransportT,
-        WebTransportServer: WebTransportServerT,
+        WebTransport: WebTransport,
+        WebTransportServer: WebTransportServer,
     });
 })(globalThis);
 

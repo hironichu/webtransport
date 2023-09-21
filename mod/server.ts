@@ -40,10 +40,25 @@ export class WebTransportServer extends EventEmitter<WebTransportServerEvents> {
         this.connection.bind(this),
     );
     constructor(
-        _port: number,
+        _url: URL | string,
         _options: WebTransportServerOptions = ServerOpts,
     ) {
         super();
+        //if _url is a string, we need to convert it to an URL
+        if (typeof _url === "string") {
+            _url = new URL(_url);
+        }
+        if (_url.port.length == 0) {
+            throw new TypeError("Invalid port");
+        }
+        if (_url.protocol != "https:") {
+            throw new TypeError("Invalid protocol");
+        }
+        if (_url.hostname.length == 0) {
+            throw new TypeError("Invalid hostname");
+        }
+        _options.domain ??= _url.hostname ?? Deno.hostname();
+
         const [certificate, key] = this.checkArgs(_options);
 
         const certbuf = encodeBuf(certificate);
@@ -51,7 +66,7 @@ export class WebTransportServer extends EventEmitter<WebTransportServerEvents> {
 
         this.#SRV_PTR = window.WTLIB.symbols.proc_server_init(
             this.#NOTIFY_PTR.pointer,
-            _port,
+            parseInt(_url.port),
             true,
             _options.keepAlive,
             _options.maxTimeout,
@@ -65,13 +80,9 @@ export class WebTransportServer extends EventEmitter<WebTransportServerEvents> {
             throw new Error("Failed to initialize server");
         }
 
-        window.WTLIB.symbols.proc_server_listen(
-            this.#SRV_PTR,
-            this.#CONNECTION_CB.pointer,
-        );
         this.#NOTIFY_PTR.ref();
         this.#CONNECTION_CB.ref();
-        this.emit("listening", new Event("ready"));
+        this.emit("listening", new Event("listening"));
     }
     /**
      * @callback connection
@@ -82,11 +93,11 @@ export class WebTransportServer extends EventEmitter<WebTransportServerEvents> {
     private connection(client: Deno.PointerValue<unknown>) {
         const SHARED_BUF = new SharedArrayBuffer(65536);
         const CONN_BUFFER = new Uint8Array(SHARED_BUF);
-        window.WTLIB.symbols.proc_init_datagrams(
-            client,
-            CONN_BUFFER,
-            CONN_BUFFER.byteLength,
-        );
+        // window.WTLIB.symbols.proc_init_datagrams(
+        //     client,
+        //     CONN_BUFFER,
+        //     CONN_BUFFER.byteLength,
+        // );
         //Setting up the stream for the new connection
         const conn = new WebTransportConnection(
             client,
@@ -141,19 +152,29 @@ export class WebTransportServer extends EventEmitter<WebTransportServerEvents> {
             // await window.WTLIB.symbols.proc_server_close(this.#SRV_PTR);
         }
         this.emit("close", new CloseEvent("close"));
-
         //free all the connections
-        this.connections.forEach(async (conn, id) => {
-            await conn.close();
+        this.connections.forEach((conn, id) => {
+            if (conn.state != "closed") {
+                window.WTLIB.symbols.proc_client_close(
+                    this.#SRV_PTR!,
+                    conn.pointer,
+                );
+            }
             window.WTLIB.symbols.free_conn(conn.pointer);
-            //delete the connection
             this.connections.delete(id);
         });
+
         window.WTLIB.symbols.free_server(this.#SRV_PTR!);
         this.#SRV_PTR = undefined;
         return;
     }
-
+    public async listen() {
+        await window.WTLIB.symbols.proc_server_listen(
+            this.#SRV_PTR!,
+            this.#CONNECTION_CB.pointer,
+        );
+        return this;
+    }
     private checkArgs(_options: WebTransportServerOptions) {
         if (
             ((!_options.certFile || _options.certFile.length == 0) &&

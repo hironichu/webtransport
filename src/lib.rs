@@ -11,6 +11,5 @@ static RUNTIME: Lazy<Runtime> = Lazy::new(|| Runtime::new().unwrap());
 mod certificate;
 pub mod client;
 mod connection;
-mod executor;
 pub mod server;
 mod shared;

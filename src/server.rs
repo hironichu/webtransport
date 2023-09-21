@@ -9,7 +9,6 @@ use crate::{
 
 pub struct WebTransportServer {
     pub server: Option<Endpoint<endpoint::Server>>,
-    pub conn_cb: Option<extern "C" fn(*mut Conn<connection::Server>)>,
     pub state: Option<bool>,
 }
 
@@ -29,54 +28,45 @@ impl WebTransportServer {
             }
         };
         Ok(Self {
-            conn_cb: None,
             server: Some(server),
             state: Some(true),
         })
     }
 
-    pub(crate) unsafe fn handle_sess_in(&'static mut self) {
-        RUNTIME.spawn(async move {
-            loop {
-                let incoming_session = self.server.as_mut().unwrap().accept().await;
+    pub(crate) async unsafe fn handle_sess_in(&mut self) -> Result<*mut Conn<Server>, u32> {
+        let incoming_session = self.server.as_mut().unwrap().accept().await;
 
-                let session_request = incoming_session.await;
+        let session_request = incoming_session.await;
 
-                let mut accepted_session = match session_request {
-                    Ok(session_request) => {
-                        let client = Conn::<Server>::new(session_request);
-                        client
-                    }
-                    Err(e) => {
-                        //TODO(hironichu): Handle error with callback SENDER_FN
-                        println!("Error accepting session: {:?}", e);
-                        continue;
-                    }
-                };
-                // accepted_session.
-                //TODO(hironichu): We should handle every step of the handshake with callbacks.
-
-                // println!(
-                // 	"DBG: New session: Authority: '{}', Path: '{}'",
-                // 	accepted_session.authority(),
-                // 	accepted_session.path()
-                // );
-
-                match accepted_session.accept().await {
-                    Ok(conn) => {
-                        // println!("DBG: Sending connection to channel.");
-                        accepted_session.accepted(conn);
-                        let client_ptr = Box::into_raw(Box::new(accepted_session));
-                        assert!(!SERVER_CONN_FN.is_none()); //TODO(hironichu): Handle this better.
-                        SERVER_CONN_FN.unwrap()(client_ptr);
-                    }
-                    _ => {
-                        println!("Error accepting connection");
-                        continue;
-                    }
-                }
+        let accepted_session = match session_request {
+            Ok(session_request) => {
+                let client = Conn::<Server>::new(session_request);
+                Ok(client)
             }
-        });
+            Err(e) => {
+                //TODO(hironichu): Map this code to an error in Typescript
+                Err(e)
+            }
+        };
+        match accepted_session {
+            Ok(mut sess) => match sess.accept().await {
+                Ok(conn) => {
+                    sess.accepted(conn);
+                    let client_ptr = Box::into_raw(Box::new(sess));
+                    Ok(client_ptr)
+                }
+                Err(e) => {
+                    println!("Error accepting connection : {}", e);
+                    //TODO(hironichu): Map this code to an error in Typescript
+                    Err(0)
+                }
+            },
+            _ => {
+                println!("Error accepting session");
+                //TODO(hironichu): Map this code to an error in Typescript
+                Err(0)
+            }
+        }
     }
 }
 
@@ -140,9 +130,20 @@ pub unsafe extern "C" fn proc_server_listen(
 ) {
     assert!(!server_ptr.is_null());
     let server = &mut *server_ptr;
-    server.conn_cb = cb;
     SERVER_CONN_FN = cb;
-    server.handle_sess_in();
+    RUNTIME.spawn(async move {
+        loop {
+            let conn = server.handle_sess_in().await;
+            match conn {
+                Ok(conn) => {
+                    SERVER_CONN_FN.unwrap()(conn);
+                }
+                Err(e) => {
+                    println!("Error accepting connection : {}", e);
+                }
+            }
+        }
+    });
 }
 
 #[no_mangle]

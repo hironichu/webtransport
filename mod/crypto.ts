@@ -87,17 +87,14 @@ export function GenerateCertKeyFile(
         });
     }
     const [cert, key] = GenerateCertKey(domainStr, start, end);
+    const certpath = join(path, `${certFileName ?? domainStr + ".crt"}`);
+    const keypath = join(path, `${keyFileName ?? domainStr + ".key"}`);
     try {
-        const certpath = join(path, `${certFileName ?? domainStr + ".crt"}`);
-        const keypath = join(path, `${keyFileName ?? domainStr + ".key"}`);
-
         Deno.writeFileSync(certpath, cert, {
             mode: 0o444,
-            // createNew: true,
         });
         Deno.writeFileSync(keypath, key, {
             mode: 0o444,
-            // createNew: true,
         });
         return [certpath, keypath];
     } catch (e) {
