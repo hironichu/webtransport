@@ -8,7 +8,7 @@ const client = new WebTransport(connectAddr, {
     keepAlive: 3,
 });
 
-const transport = await client.ready();
+const transport = await client.ready;
 console.log("Client connected");
 const stream = transport.incomingBidirectionalStreams;
 const reader = stream.getReader();

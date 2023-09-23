@@ -125,7 +125,7 @@ pub unsafe extern "C" fn proc_accept_uni(connptr: *mut Conn<Server>) -> *mut Bid
         })),
         Err(err) => {
             let mut msg = err.to_string();
-            SEND_FN.unwrap()(151, msg.as_mut_ptr(), msg.len() as u32);
+            SEND_FN.unwrap()(188, msg.as_mut_ptr(), msg.len() as u32);
             std::ptr::null_mut()
         }
     }

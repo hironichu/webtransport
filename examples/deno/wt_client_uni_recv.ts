@@ -8,7 +8,7 @@ const client = new WebTransport(connectAddr, {
     keepAlive: 3,
 });
 
-const transport = await client.ready();
+const transport = await client.ready;
 console.log("Client connected");
 
 const currentTime = performance.now();

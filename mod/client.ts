@@ -13,8 +13,6 @@ import { encodeBuf } from "./utils.ts";
 
 export class WebTransport {
     #CONN_PTR: Deno.PointerValue<unknown> | undefined;
-    #STATE_PTR = new Uint32Array(1);
-
     #NOTIFY_PTR = new Deno.UnsafeCallback(
         {
             parameters: ["u32", "pointer", "u32"],
@@ -31,7 +29,7 @@ export class WebTransport {
         this.connection.bind(this),
     );
     public datagrams!: WebTransportDatagramDuplexStream;
-
+    public readonly ready: Promise<WebTransportConnection>;
     public conn?: WebTransportConnection;
     /**
      * @typedef {Deno.NetAddr} remote
@@ -69,6 +67,18 @@ export class WebTransport {
         /// ref the callback to prevent it from being garbage collected
         this.#NOTIFY_PTR.ref();
         this.#CONNECTION_CB.ref();
+        this.ready = new Promise<WebTransportConnection>((resolve) => {
+            const encoded = encodeBuf(this.remote.href);
+            window.WTLIB.symbols.proc_client_connect(
+                this.#CONN_PTR!,
+                this.#CONNECTION_CB.pointer,
+                encoded[0],
+                encoded[1],
+            );
+            if (this.conn) {
+                resolve(this.conn);
+            }
+        });
     }
     /**
      * @callback connection
@@ -119,9 +129,9 @@ export class WebTransport {
             buflen,
         );
         const data = new TextDecoder().decode(pointer);
-        if (code >= 400) {
-            this.conn!.close();
-            await Promise.reject(this.ready);
+        if (code >= 130) {
+            await Promise.race([this.ready]);
+            this.close();
             throw new Error(data);
         }
         const _event = new MessageEvent("error", {
@@ -132,35 +142,25 @@ export class WebTransport {
         //TODO(hironichu): Implement Error/event catching from rust to free the memory once a connection drop or if something else happens.
     }
 
-    ready = () =>
-        new Promise<WebTransportConnection>(() => {
-            const encoded = encodeBuf(this.remote.href);
-            window.WTLIB.symbols.proc_client_connect(
-                this.#CONN_PTR!,
-                this.#CONNECTION_CB.pointer,
-                encoded[0],
-                encoded[1],
-            );
-            if (this.conn) {
-                return this.conn;
-            } else {
-                throw new Error("Failed to connect to server");
-            }
-        });
-
     close() {
         this.#NOTIFY_PTR.unref();
         this.#NOTIFY_PTR.close();
         this.#CONNECTION_CB.unref();
         this.#CONNECTION_CB.close();
         //close the datagram
-        this.datagrams.readable.cancel("Connection closed");
-        this.datagrams.writable.abort("Connection closed");
+        if (this.datagrams) {
+            this.datagrams.close();
+        }
 
-        if (this.#CONN_PTR) {
+        if (this.#CONN_PTR && this.conn) {
             window.WTLIB.symbols.proc_client_close(
                 this.#CONN_PTR,
                 this.conn!.pointer,
+            );
+        }
+        if (this.#CONN_PTR && !this.conn) {
+            window.WTLIB.symbols.free_client(
+                this.#CONN_PTR,
             );
         }
 

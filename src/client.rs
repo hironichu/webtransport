@@ -119,3 +119,6 @@ pub unsafe extern "C" fn proc_client_close(
 
 #[no_mangle]
 pub unsafe extern "C" fn free_all_client(_a: *mut WebTransportClient, _b: *mut Conn<Client>) {}
+
+#[no_mangle]
+pub unsafe extern "C" fn free_client(_a: *mut WebTransportClient) {}

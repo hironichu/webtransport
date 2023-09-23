@@ -8,7 +8,7 @@ interface WebTransportCloseInfo {
     reason?: string;
 }
 export class WebTransportDatagramDuplexStream {
-    #READ_BUFFER: Uint8Array;
+    #READ_BUFFER?: Uint8Array;
     readonly incomingHighWaterMark = 1;
     readonly incomingMaxAge = 0;
     readonly maxDatagramSize = 1024;
@@ -47,7 +47,7 @@ export class WebTransportDatagramDuplexStream {
     }
     get readable() {
         const connection = this.connection;
-        const buffer = this.#READ_BUFFER;
+        const buffer = this.#READ_BUFFER ?? new Uint8Array(1024);
         const StreamBuffer = new ReadableStream<Uint8Array>({
             async pull(controller) {
                 try {
@@ -69,6 +69,11 @@ export class WebTransportDatagramDuplexStream {
         });
         return StreamBuffer;
     }
+    close() {
+        this.#READ_BUFFER = undefined;
+        this.readable.cancel();
+        this.writable.abort();
+    }
 }
 
 export class WebTransportBidirectionalStream {
@@ -88,6 +93,7 @@ export class WebTransportReceiveStream {
     }
     static from(
         ptr: Deno.PointerValue<unknown>,
+        DEFAULT_CHUNK_SIZE = 1024,
     ) {
         return new ReadableStream({
             type: "bytes",
@@ -115,7 +121,19 @@ export class WebTransportReceiveStream {
                         }
                         controller.byobRequest.respond(bytesRead as number);
                     } else {
-                        // return;
+                        const buffer = new ArrayBuffer(DEFAULT_CHUNK_SIZE);
+                        bytesRead = await window.WTLIB.symbols.proc_read(
+                            ptr,
+                            buffer,
+                            DEFAULT_CHUNK_SIZE,
+                        );
+                        if (bytesRead === 0) {
+                            controller.close();
+                        } else {
+                            controller.enqueue(
+                                new Uint8Array(buffer, 0, bytesRead as number),
+                            );
+                        }
                     }
                     if (bytesRead === 0) {
                         return;
@@ -127,7 +145,7 @@ export class WebTransportReceiveStream {
                 if (!ptr || ptr === null) {
                     return;
                 }
-                console.log("CANCEL ", reason);
+                console.error("Canceled: ", reason);
                 await window.WTLIB.symbols.proc_recvtream_stop(ptr).catch(
                     (e) => {
                         console.error(e);

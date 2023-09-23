@@ -65,7 +65,7 @@ export const symbols = {
     },
     proc_client_connect: {
         parameters: ["pointer", "function", "buffer", "usize"],
-        result: "pointer",
+        result: "void",
         callback: true,
     },
     proc_client_close: {
@@ -171,6 +171,10 @@ export const symbols = {
     },
     free_all_client: {
         parameters: ["pointer", "pointer"],
+        result: "void",
+    },
+    free_client: {
+        parameters: ["pointer"],
         result: "void",
     },
 } as const;
