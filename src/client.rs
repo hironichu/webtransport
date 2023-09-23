@@ -1,13 +1,13 @@
-use std::time::Duration;
-use wtransport::{endpoint, ClientConfig, Endpoint};
-
 use crate::{
     connection::{self, Client, Conn},
     CLIENT_CONN_FN, RUNTIME, SEND_FN,
 };
+use std::time::Duration;
+use wtransport::endpoint::endpoint_side::Client as endClient;
+use wtransport::{ClientConfig, Endpoint};
 
 pub struct WebTransportClient {
-    pub client: Option<Endpoint<endpoint::Client>>,
+    pub client: Option<Endpoint<endClient>>,
     pub conn_cb: Option<extern "C" fn(*mut Conn<connection::Client>)>,
     pub state: Option<bool>,
 }
@@ -45,6 +45,8 @@ impl WebTransportClient {
                 }
                 Err(err) => {
                     println!("DBG: Error connecting to server. Err: {}", err.to_string());
+                    let mut msg = err.to_string();
+                    SEND_FN.unwrap()(141, msg.as_mut_ptr(), msg.len() as u32);
                 }
             }
         });
@@ -81,7 +83,8 @@ pub unsafe extern "C" fn proc_client_init(
     match client {
         Ok(client) => Box::into_raw(Box::new(client)),
         Err(_) => {
-            panic!("Error creating client")
+            SEND_FN.unwrap()(140, std::ptr::null_mut(), 0);
+            std::ptr::null_mut()
         }
     }
 }

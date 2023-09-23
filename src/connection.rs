@@ -1,46 +1,12 @@
 use crate::RUNTIME;
 use std::{collections::HashMap, future::Future, marker::PhantomData, pin::Pin};
-use wtransport::{datagram::Datagram, endpoint::SessionRequest, Connection};
+use wtransport::{
+    datagram::Datagram, endpoint::SessionRequest, error::ConnectionError, Connection, RecvStream,
+    SendStream,
+};
 use wtransport_proto::varint::VarInt;
 
 type DynFutureIncomingSession = dyn Future<Output = Result<(), ()>> + Send + Sync;
-
-impl<Side: std::marker::Send> Conn<Side> {
-    //TODO(hironichu): Add generic methods for openning and closing streams instead of doing it in both client and server.
-    pub async fn closed(&mut self) {
-        let conn = self.conn.as_ref().unwrap();
-        conn.closed().await
-    }
-
-    pub fn open_uni(&'static mut self) {
-        println!("To be implemented");
-        // executor::spawn(async move {
-        //     let conn = self.conn.as_ref().unwrap();
-        //     let stream = conn.open_uni().await.unwrap();
-        //     stream.await.unwrap();
-        // })
-        // .detach();
-    }
-    pub fn open_bi(&'static mut self) {
-        println!("To be implemented");
-        // executor::spawn(async move {
-        //     let conn = self.conn.as_ref().unwrap();
-        //     let stream = conn.open_bi().await.unwrap();
-        //     stream.await.unwrap();
-        // })
-        // .detach();
-    }
-    pub fn close(&mut self, code: u32, reason: Option<&[u8]>) {
-        let reason = match reason {
-            Some(reason) => reason,
-            None => b"closed",
-        };
-        self.conn
-            .as_ref()
-            .unwrap()
-            .close(VarInt::from_u32(code), reason);
-    }
-}
 
 pub struct Server(Pin<Box<DynFutureIncomingSession>>);
 
@@ -56,10 +22,8 @@ pub struct Conn<Side: std::marker::Send> {
 
 impl<Side: std::marker::Send> Conn<Side> {
     pub fn datagrams(&mut self) -> Result<Datagram, usize> {
-        let stream = RUNTIME.block_on(async move {
-            let conn = self.conn.as_ref().unwrap();
-            conn.receive_datagram().await
-        });
+        let conn = self.conn.as_ref().unwrap();
+        let stream = RUNTIME.block_on(async move { conn.receive_datagram().await });
         match stream {
             Ok(dgram) => Ok(dgram),
             _ => {
@@ -70,6 +34,77 @@ impl<Side: std::marker::Send> Conn<Side> {
                 Err(0)
             }
         }
+    }
+    pub async fn closed(&mut self) {
+        let conn = self.conn.as_ref().unwrap();
+        conn.closed().await
+    }
+
+    /// Open a unidirectional stream.
+    pub fn open_uni(&'static mut self) -> Result<SendStream, ConnectionError> {
+        let conn = self.conn.as_ref().unwrap();
+        let stream = RUNTIME.block_on(async move {
+            let stream = conn.open_uni().await;
+            match stream {
+                Ok(stream) => Ok(stream.await.unwrap()),
+                Err(e) => Err(e),
+            }
+        });
+        stream
+    }
+
+    /// Open a bidirectional stream.
+    pub fn open_bi(&'static mut self) -> Result<(SendStream, RecvStream), ConnectionError> {
+        let conn = self.conn.as_ref().unwrap();
+        let stream = RUNTIME.block_on(async move {
+            let stream = conn.open_bi().await;
+            match stream {
+                Ok(stream) => Ok(stream.await.unwrap()),
+                Err(e) => Err(e),
+            }
+        });
+
+        stream
+    }
+
+    /// Accept a unidirectional stream.
+    pub fn accept_uni(&'static mut self) -> Result<RecvStream, ConnectionError> {
+        let conn = self.conn.as_ref().unwrap();
+        let stream = RUNTIME.block_on(async move {
+            let stream = conn.accept_uni().await;
+            match stream {
+                Ok(stream) => Ok(stream),
+                Err(e) => Err(e),
+            }
+        });
+        stream
+    }
+
+    /// Accept a bidirectional stream.
+    pub fn accept_bi(&'static mut self) -> Result<(SendStream, RecvStream), ConnectionError> {
+        let conn = self.conn.as_ref().unwrap();
+        let stream = RUNTIME.block_on(async move {
+            let stream = conn.accept_bi().await;
+            match stream {
+                Ok(stream) => Ok(stream),
+                Err(e) => Err(e),
+            }
+        });
+        stream
+    }
+
+    /// Close the connection.
+    pub fn close(&mut self, code: u32, reason: Option<&[u8]>) {
+        let reason = match reason {
+            Some(reason) => reason,
+            None => b"closed",
+        };
+        self.conn
+            .as_ref()
+            .unwrap()
+            .close(VarInt::from_u32(code), reason);
+
+        drop(self.conn.take())
     }
 }
 

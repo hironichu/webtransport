@@ -84,11 +84,69 @@ export const symbols = {
         result: "void",
         nonblocking: false,
     },
-    // proc_init_datagrams: {
-    //     parameters: ["pointer", "buffer", "usize"],
-    //     result: "void",
-    //     nonblocking: true,
-    // },
+    proc_accept_bi: {
+        parameters: ["pointer"], //Option<>
+        result: "pointer",
+        nonblocking: true,
+    },
+    proc_open_bi: {
+        parameters: ["pointer"], //Option<>
+        result: "pointer",
+        nonblocking: true,
+    },
+
+    proc_accept_uni: {
+        parameters: ["pointer"],
+        result: "pointer",
+        nonblocking: true,
+    },
+    proc_open_uni: {
+        parameters: ["pointer"],
+        result: "pointer",
+        nonblocking: true,
+    },
+
+    proc_read: {
+        parameters: ["pointer", "buffer", "u32"],
+        result: "usize",
+        nonblocking: true,
+    },
+    proc_write: {
+        parameters: ["pointer", "buffer", "u32"],
+        result: "usize",
+        nonblocking: true,
+    },
+    proc_write_all: {
+        parameters: ["pointer", "buffer", "u32"],
+        result: "usize",
+        nonblocking: true,
+    },
+    proc_recvstream_id: {
+        parameters: ["pointer"],
+        result: "u64",
+    },
+    proc_sendstream_id: {
+        parameters: ["pointer"],
+        result: "u64",
+    },
+    proc_sendstream_priority: {
+        parameters: ["pointer"],
+        result: "u64",
+    },
+    proc_sendstream_set_priority: {
+        parameters: ["pointer", "u64"],
+        result: "u64",
+    },
+    proc_sendstream_finish: {
+        parameters: ["pointer"],
+        result: "void",
+        nonblocking: true,
+    },
+    proc_recvtream_stop: {
+        parameters: ["pointer"],
+        result: "void",
+        nonblocking: true,
+    },
     // Crypto symbols
     proc_gencert: {
         parameters: [

@@ -77,17 +77,22 @@ export class WebTransport {
      * @description This function is called when a new connection is received from the server
      */
     private connection(client: Deno.PointerValue<unknown>) {
+        if (!client || client == null) {
+            return;
+        }
+        Promise.resolve(this.ready);
         const CONN_BUFFER = new Uint8Array(65536);
 
-        const conn = new WebTransportConnection(
+        this.conn = new WebTransportConnection(
             client,
             CONN_BUFFER,
         );
 
         this.datagrams = new WebTransportDatagramDuplexStream(
-            conn,
+            this.conn,
             CONN_BUFFER,
         );
+        return this.conn;
     }
     /**
      * @callback notify
@@ -98,41 +103,48 @@ export class WebTransport {
      *
      * @description This function is called when a new event is received from the server
      */
-    private notify(
+    private async notify(
         _code: unknown | number,
         buffer: Deno.PointerValue<unknown>,
         buflen: number,
     ) {
-        const code = _code as bigint;
-        console.log(code);
+        const code = _code as number;
+
         if (buflen < 0) {
             return;
         }
+
         const pointer = Deno.UnsafePointerView.getArrayBuffer(
             buffer as unknown as NonNullable<Deno.PointerValue>,
             buflen,
         );
-        const _event = new MessageEvent("message", {
-            data: pointer,
+        const data = new TextDecoder().decode(pointer);
+        if (code >= 400) {
+            this.conn!.close();
+            await Promise.reject(this.ready);
+            throw new Error(data);
+        }
+        const _event = new MessageEvent("error", {
+            data,
         });
+        dispatchEvent(_event);
 
         //TODO(hironichu): Implement Error/event catching from rust to free the memory once a connection drop or if something else happens.
     }
 
     ready = () =>
-        new Promise<this>((resolve, reject) => {
-            try {
-                const encoded = encodeBuf(this.remote.href);
-                window.WTLIB.symbols.proc_client_connect(
-                    this.#CONN_PTR!,
-                    this.#CONNECTION_CB.pointer,
-                    encoded[0],
-                    encoded[1],
-                );
-
-                resolve(this);
-            } catch (e) {
-                reject(e);
+        new Promise<WebTransportConnection>(() => {
+            const encoded = encodeBuf(this.remote.href);
+            window.WTLIB.symbols.proc_client_connect(
+                this.#CONN_PTR!,
+                this.#CONNECTION_CB.pointer,
+                encoded[0],
+                encoded[1],
+            );
+            if (this.conn) {
+                return this.conn;
+            } else {
+                throw new Error("Failed to connect to server");
             }
         });
 

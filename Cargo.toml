@@ -45,7 +45,7 @@ wtransport = { git = "https://github.com/hironichu/wtransport", branch = "feat/n
 	"dangerous-configuration",
 ] }
 wtransport-proto = { git = "https://github.com/hironichu/wtransport", branch = "feat/new" }
-rcgen = "=0.11.1"
+rcgen = "=0.11.2"
 ring = "=0.16.20"
 time = "=0.3.28"
 anyhow = "=1.0.75"

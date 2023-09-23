@@ -1,14 +1,14 @@
-use std::{path::Path, time::Duration};
-use tokio::runtime::Runtime;
-use wtransport::{endpoint, tls::Certificate, Endpoint, ServerConfig};
-
 use crate::{
     connection::{self, Conn, Server},
     RUNTIME, SEND_FN, SERVER_CONN_FN,
 };
+use std::{path::Path, time::Duration};
+use tokio::runtime::Runtime;
+use wtransport::endpoint::endpoint_side::Server as endServer;
+use wtransport::{tls::Certificate, Endpoint, ServerConfig};
 
 pub struct WebTransportServer {
-    pub server: Option<Endpoint<endpoint::Server>>,
+    pub server: Option<Endpoint<endServer>>,
     pub state: Option<bool>,
 }
 
@@ -56,7 +56,7 @@ impl WebTransportServer {
                     Ok(client_ptr)
                 }
                 Err(e) => {
-                    println!("Error accepting connection : {}", e);
+                    println!("Error accepting connection : {}", e.to_string());
                     //TODO(hironichu): Map this code to an error in Typescript
                     Err(0)
                 }
@@ -139,7 +139,7 @@ pub unsafe extern "C" fn proc_server_listen(
                     SERVER_CONN_FN.unwrap()(conn);
                 }
                 Err(e) => {
-                    println!("Error accepting connection : {}", e);
+                    println!("Error accepting sess in : {}", e);
                 }
             }
         }

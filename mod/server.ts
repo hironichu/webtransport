@@ -124,6 +124,7 @@ export class WebTransportServer extends EventEmitter<WebTransportServerEvents> {
         buffer: Deno.PointerValue<unknown>,
         buflen: number,
     ) {
+        console.info("CB NOTIFY CALLEd");
         const code = _code as bigint;
         console.log(code);
         if (buflen < 0) {

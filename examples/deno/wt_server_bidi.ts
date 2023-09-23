@@ -27,9 +27,13 @@ const server = new WebTransportServer("https://localhost:4433", {
 
 server.listen();
 console.log("Server listening");
-server.on("connection", (conn) => {
-    console.log("New client");
-    const bidiStream = conn.datagrams;
+server.on("connection", async (conn) => {
+    const bidiStream = await conn.createBidirectionalStream();
     const writer = bidiStream.writable.getWriter();
     writer.write(new Uint8Array([1, 2, 3, 4, 5]));
+    writer.write(new Uint8Array([1, 2, 3, 4, 5]));
+    writer.write(new Uint8Array([1, 2, 3, 4, 5]));
+    for await (const reads of bidiStream.readable) {
+        console.log(reads);
+    }
 });
