@@ -24,14 +24,6 @@ export class WebTransportServer extends EventEmitter<WebTransportServerEvents> {
     public connections: Map<number, WebTransportConnection> = new Map();
     #SRV_PTR: Deno.PointerValue<unknown> | undefined;
 
-    #STATE_PTR = new Uint32Array(1);
-    #NOTIFY_PTR = new Deno.UnsafeCallback(
-        {
-            parameters: ["u32", "pointer", "u32"],
-            result: "void",
-        },
-        this.notify.bind(this),
-    );
     #CONNECTION_CB = new Deno.UnsafeCallback(
         {
             parameters: ["pointer"],
@@ -79,7 +71,6 @@ export class WebTransportServer extends EventEmitter<WebTransportServerEvents> {
             throw new Error("Failed to initialize server");
         }
 
-        // this.#NOTIFY_PTR.ref();
         this.#CONNECTION_CB.ref();
         this.emit("listening", new Event("listening"));
     }
@@ -92,12 +83,7 @@ export class WebTransportServer extends EventEmitter<WebTransportServerEvents> {
     private connection(client: Deno.PointerValue<unknown>) {
         const SHARED_BUF = new ArrayBuffer(65536);
         const CONN_BUFFER = new Uint8Array(SHARED_BUF);
-        // window.WTLIB.symbols.proc_init_datagrams(
-        //     client,
-        //     CONN_BUFFER,
-        //     CONN_BUFFER.byteLength,
-        // );
-        //Setting up the stream for the new connection
+
         const conn = new WebTransportConnection(
             client,
             CONN_BUFFER,
@@ -109,44 +95,8 @@ export class WebTransportServer extends EventEmitter<WebTransportServerEvents> {
         );
         this.emit("connection", conn);
     }
-    /**
-     * @callback notify
-     * @param {number} code
-     * @param {Deno.PointerValue<unknown>} buffer
-     * @param {number} buflen
-     * @returns {void}
-     *
-     * @description This function is called when a new event is received from the server
-     */
-    private notify(
-        _code: unknown | number,
-        buffer: Deno.PointerValue<unknown>,
-        buflen: number,
-    ) {
-        //TODO(hironichu): This callback should implement more arguments to get an optional pointer to the connection its referring to
-        const code = _code as number;
 
-        console.info("[CB SERVER] Got code : ", code);
-
-        if (buflen > 1) {
-            const pointer = Deno.UnsafePointerView.getArrayBuffer(
-                buffer as unknown as NonNullable<Deno.PointerValue>,
-                buflen,
-            );
-            const event = new MessageEvent("message", {
-                data: decoder.decode(pointer),
-            });
-            console.log("Event data : ", event.data);
-            this.emit("event", event);
-        }
-        if (code >= 130) {
-            // Promise.race([this.closed]);
-            console.error("[CB SERVER] We should close the connection");
-            // throw new Error(data);
-        }
-    }
-
-    close() {
+    async close() {
         console.info("[JS] SERVER CLOSE CALLED");
         //free all the connections
         this.connections.forEach((conn, id) => {
@@ -161,10 +111,9 @@ export class WebTransportServer extends EventEmitter<WebTransportServerEvents> {
             this.connections.delete(id);
         });
         if (this.#SRV_PTR) {
-            window.WTLIB.symbols.proc_server_close(this.#SRV_PTR);
+            await window.WTLIB.symbols.proc_server_close(this.#SRV_PTR);
         }
-        this.#NOTIFY_PTR.close();
-        this.#CONNECTION_CB.close();
+
         this.#SRV_PTR = undefined;
         console.info("[SERVER] Server closed");
     }
@@ -198,8 +147,14 @@ export class WebTransportServer extends EventEmitter<WebTransportServerEvents> {
                     "Invalid certificate or key file path (empty string)",
                 );
             }
-            Deno.statSync(_options.certFile);
-            Deno.statSync(_options.keyFile);
+            try {
+                Deno.statSync(_options.certFile);
+                Deno.statSync(_options.keyFile);
+            } catch {
+                throw new TypeError(
+                    "Invalid certificate or key file path",
+                );
+            }
             //
             certificate = _options.certFile;
             key = _options.keyFile;

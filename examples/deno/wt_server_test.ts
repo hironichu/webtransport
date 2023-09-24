@@ -5,12 +5,13 @@ import { assert } from "https://deno.land/std@0.202.0/assert/mod.ts";
 import { WebTransportServer } from "../../mod/server.ts";
 // //add certs cleanup methods after tests
 // const certPath = join(Deno.cwd(), "./certs/");
-async function _sleep(msec: number) {
+async function sleep(msec: number) {
     await new Promise((res, _rej) => setTimeout(res, msec));
 }
 
-Deno.test({ name: "Server startup/close" }, () => {
+Deno.test({ name: "Server startup/close" }, async () => {
     //generate a certificate
+    sleep(2);
     const [cert, key] = GenerateCertKeyFile(
         "localhost",
         0,
@@ -22,6 +23,7 @@ Deno.test({ name: "Server startup/close" }, () => {
         maxTimeout: 10,
         keepAlive: 3,
     });
+    await server.ready;
     server.close();
     //try to start a UDP socket on the same port to see if it's closed
     const sock = Deno.listenDatagram({

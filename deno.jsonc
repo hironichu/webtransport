@@ -20,7 +20,7 @@
         "util:fmt": "deno fmt --unstable",
         "util:lint": "deno lint --unstable",
         //Tests
-        "test": "deno test -A --unstable ",
+        "test": "deno task demo:gencert && deno test -A --unstable ",
         //Non CI build
         "build": "cargo build"
     },

@@ -23,6 +23,7 @@ impl WebTransportServer {
                 return Err(1);
             }
         };
+
         Ok(Self {
             server: Some(server),
             state: Some(true),
@@ -130,8 +131,7 @@ pub unsafe extern "C" fn proc_server_listen(
 
     RUNTIME.spawn(async move {
         loop {
-            let conn = server.handle_sess_in().await;
-            match conn {
+            match server.handle_sess_in().await {
                 Ok(conn) => {
                     cb(conn);
                 }
