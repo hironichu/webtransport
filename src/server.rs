@@ -127,6 +127,17 @@ pub unsafe extern "C" fn proc_server_listen(
 
     RUNTIME.spawn(async move {
         loop {
+            match server.state {
+                Some(true) => {}
+                Some(false) => {
+                    println!("Server state is false, exiting");
+                    return;
+                }
+                None => {
+                    println!("Server state is None, exiting");
+                    return;
+                }
+            }
             match server.handle_sess_in().await {
                 Ok(conn) => {
                     cb(conn);
@@ -186,19 +197,33 @@ pub extern "C" fn proc_server_client_path(
 #[no_mangle]
 pub unsafe extern "C" fn proc_server_close(server_ptr: *mut WebTransportServer) -> usize {
     assert!(!server_ptr.is_null());
-    println!("SERVER CLOSE CALLED");
     let server = &mut *server_ptr;
-    server.state = Some(false);
     let endpoint = server.server.as_mut();
     match endpoint {
-        Some(endpoint) => RUNTIME.block_on(async move {
-            endpoint.wait_idle().await;
-        }),
+        Some(endpoint) => {
+            endpoint.close(30, b"Server closing");
+        }
         None => println!("Error closing server"),
     }
     0
 }
-
+#[no_mangle]
+pub unsafe extern "C" fn proc_server_close_clients(server_ptr: *mut WebTransportServer) -> usize {
+    assert!(!server_ptr.is_null());
+    println!("CLIENT CLOSE CALLED");
+    let server = &mut *server_ptr;
+    server.state = Some(false);
+    let endpoint = server.server.as_mut();
+    match endpoint {
+        Some(endpoint) => {
+            RUNTIME.block_on(async move {
+                endpoint.wait_idle().await;
+            });
+        }
+        None => println!("Error closing clients connections"),
+    }
+    0
+}
 //free all above once
 #[no_mangle]
 pub unsafe extern "C" fn free_all_server(_a: *mut WebTransportServer, _c: *mut Runtime) {}

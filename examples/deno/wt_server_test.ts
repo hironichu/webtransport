@@ -11,7 +11,6 @@ async function sleep(msec: number) {
 
 Deno.test({ name: "Server startup/close" }, async () => {
     //generate a certificate
-    sleep(2);
 
     const server = new WebTransportServer("https://localhost:4433", {
         certFile: "./certs/localhost.crt",

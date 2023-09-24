@@ -24,6 +24,11 @@ export const symbols = {
     proc_server_close: {
         parameters: ["pointer"],
         result: "usize",
+        nonblocking: false,
+    },
+    proc_server_close_clients: {
+        parameters: ["pointer"],
+        result: "usize",
         nonblocking: true,
     },
     proc_server_client_headers: {
