@@ -91,10 +91,12 @@ export function GenerateCertKeyFile(
     const keypath = join(path, `${keyFileName ?? domainStr + ".key"}`);
     try {
         Deno.writeFileSync(certpath, cert, {
-            mode: 0o444,
+            mode: 0o766,
+            create: true,
         });
         Deno.writeFileSync(keypath, key, {
-            mode: 0o444,
+            mode: 0o766,
+            create: true,
         });
         return [certpath, keypath];
     } catch (e) {
