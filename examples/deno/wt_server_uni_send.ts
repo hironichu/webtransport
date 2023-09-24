@@ -30,7 +30,7 @@ console.log("Server listening");
 server.on("connection", async (conn) => {
     console.log("New client");
     const sendStream = await conn.createUnidirectionalStream();
-    console.log("Send Stream open");
+    console.log("Stream open");
     const writer = sendStream.getWriter();
     // //wait 5 seeconds and send 2 message every 2 secondes
     // await new Promise((resolve) => setTimeout(resolve, 2000));
