@@ -20,7 +20,7 @@ Deno.test({ name: "Server startup/close" }, async () => {
         keepAlive: 3,
     });
     await server.ready;
-    server.close();
+    await server.close();
     //try to start a UDP socket on the same port to see if it's closed
     const sock = Deno.listenDatagram({
         hostname: "0.0.0.0",

@@ -118,11 +118,17 @@ export class WebTransportServer extends EventEmitter<WebTransportServerEvents> {
         console.info("[SERVER] Server closed");
     }
     get ready() {
-        console.info("[SERVER] Server ready");
-        return window.WTLIB.symbols.proc_server_listen(
-            this.#SRV_PTR!,
-            this.#CONNECTION_CB.pointer,
-        );
+        return new Promise((resolve, reject) => {
+            console.info("[SERVER] Server ready");
+            const rest = window.WTLIB.symbols.proc_server_listen(
+                this.#SRV_PTR!,
+                this.#CONNECTION_CB.pointer,
+            );
+            if (!rest) {
+                reject("Failed to listen");
+            }
+            resolve(this);
+        });
     }
     private checkArgs(_options: WebTransportServerOptions) {
         if (
