@@ -22,3 +22,7 @@ await writer.write(
     new TextEncoder().encode("Hello from client"),
 );
 console.log("Stream opened");
+
+Deno.serve((req) => {
+    return new Response("Hello " + req.url);
+});

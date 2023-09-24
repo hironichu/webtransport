@@ -1,8 +1,8 @@
 use crate::{
     connection::{self, Client, Conn},
-    CLIENT_CONN_FN, RUNTIME, SEND_FN,
+    CLIENT_CONN_FN, RUNTIME,
 };
-use std::time::Duration;
+use std::{io::Error, time::Duration};
 use wtransport::endpoint::endpoint_side::Client as endClient;
 use wtransport::{ClientConfig, Endpoint};
 
@@ -10,43 +10,46 @@ pub struct WebTransportClient {
     pub client: Option<Endpoint<endClient>>,
     pub conn_cb: Option<extern "C" fn(*mut Conn<connection::Client>)>,
     pub state: Option<bool>,
+    pub cb: extern "C" fn(u32, *mut u8, u32),
 }
 
 impl WebTransportClient {
-    pub(crate) unsafe fn new(
+    pub(crate) fn new(
         sender_fn: Option<extern "C" fn(u32, *mut u8, u32)>,
         config: ClientConfig,
-    ) -> Result<Self, u32> {
-        SEND_FN = sender_fn;
+    ) -> Result<Self, Error> {
         let _guard = RUNTIME.enter();
 
         let client = match Endpoint::client(config) {
             Ok(server) => server,
             Err(e) => {
-                println!("Error creating client: {:?}", e);
-                return Err(2);
+                return Err(e);
             }
         };
         Ok(Self {
+            cb: sender_fn.unwrap(),
             conn_cb: None,
             client: Some(client),
             state: Some(true),
         })
     }
 
-    pub(crate) unsafe fn connect(&'static mut self, url: String) {
+    pub(crate) fn connect(&'static mut self, url: String) {
         RUNTIME.block_on(async move {
-            match self.client.as_mut().unwrap().connect(url).await {
+            let client = self.client.as_mut().unwrap();
+
+            let sender_cb = self.cb;
+            match client.connect(url).await {
                 Ok(conn) => {
-                    let client = Conn::<Client>::new(conn);
+                    let client = Conn::<Client>::new(conn, sender_cb);
                     let client_ptr = Box::into_raw(Box::new(client));
-                    assert!(!CLIENT_CONN_FN.is_none());
-                    CLIENT_CONN_FN.unwrap()(client_ptr);
+                    unsafe {
+                        CLIENT_CONN_FN.unwrap()(client_ptr);
+                    }
                 }
                 Err(err) => {
-                    println!("DBG: Error connecting to server. Err: {}", err.to_string());
                     let mut msg = err.to_string();
-                    SEND_FN.unwrap()(141, msg.as_mut_ptr(), msg.len() as u32);
+                    sender_cb(141, msg.as_mut_ptr(), msg.len() as u32);
                 }
             }
         });
@@ -54,7 +57,7 @@ impl WebTransportClient {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn proc_client_init(
+pub extern "C" fn proc_client_init(
     send_func: Option<extern "C" fn(u32, *mut u8, u32)>,
     keepalive: u64,
     timeout: u64,
@@ -82,8 +85,10 @@ pub unsafe extern "C" fn proc_client_init(
     let client = WebTransportClient::new(send_func, config);
     match client {
         Ok(client) => Box::into_raw(Box::new(client)),
-        Err(_) => {
-            SEND_FN.unwrap()(140, std::ptr::null_mut(), 0);
+        Err(error) => {
+            let message = error.kind();
+            let mut msg = message.to_string();
+            send_func.unwrap()(10, msg.as_mut_ptr(), msg.len() as u32);
             std::ptr::null_mut()
         }
     }

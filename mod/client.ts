@@ -30,14 +30,8 @@ export class WebTransport {
     );
     public datagrams!: WebTransportDatagramDuplexStream;
     public readonly ready: Promise<WebTransportConnection>;
+
     public conn?: WebTransportConnection;
-    /**
-     * @typedef {Deno.NetAddr} remote
-     * @property {string} transport
-     * @property {string} hostname
-     * @property {number} port
-     * @description This object contains the remote address of the server
-     */
     protected remote: URL;
     constructor(
         _client: URL | string,
@@ -67,7 +61,7 @@ export class WebTransport {
         /// ref the callback to prevent it from being garbage collected
         this.#NOTIFY_PTR.ref();
         this.#CONNECTION_CB.ref();
-        this.ready = new Promise<WebTransportConnection>((resolve) => {
+        this.ready = new Promise<WebTransportConnection>((resolve, reject) => {
             const encoded = encodeBuf(this.remote.href);
             window.WTLIB.symbols.proc_client_connect(
                 this.#CONN_PTR!,
@@ -77,6 +71,9 @@ export class WebTransport {
             );
             if (this.conn) {
                 resolve(this.conn);
+            } else {
+                this.conn = undefined;
+                reject("Failed to connect to server");
             }
         });
     }
@@ -130,41 +127,42 @@ export class WebTransport {
         );
         const data = new TextDecoder().decode(pointer);
         if (code >= 130) {
-            await Promise.race([this.ready]);
-            this.close();
+            // await Promise.race([this.closed]);
+            await this.closed;
             throw new Error(data);
         }
         const _event = new MessageEvent("error", {
             data,
         });
         dispatchEvent(_event);
-
-        //TODO(hironichu): Implement Error/event catching from rust to free the memory once a connection drop or if something else happens.
     }
+    get closed() {
+        return new Promise((resolve) => {
+            this.#NOTIFY_PTR.unref();
+            this.#CONNECTION_CB.unref();
 
-    close() {
-        this.#NOTIFY_PTR.unref();
-        this.#NOTIFY_PTR.close();
-        this.#CONNECTION_CB.unref();
-        this.#CONNECTION_CB.close();
-        //close the datagram
-        if (this.datagrams) {
-            this.datagrams.close();
-        }
+            //close the datagrams
+            if (this.datagrams) {
+                this.datagrams.close();
+            }
+            //close all the streams
 
-        if (this.#CONN_PTR && this.conn) {
-            window.WTLIB.symbols.proc_client_close(
-                this.#CONN_PTR,
-                this.conn!.pointer,
-            );
-        }
-        if (this.#CONN_PTR && !this.conn) {
-            window.WTLIB.symbols.free_client(
-                this.#CONN_PTR,
-            );
-        }
+            if (this.#CONN_PTR && this.conn) {
+                window.WTLIB.symbols.proc_client_close(
+                    this.#CONN_PTR,
+                    this.conn!.pointer,
+                );
+            }
+            if (this.#CONN_PTR && !this.conn) {
+                window.WTLIB.symbols.free_client(
+                    this.#CONN_PTR,
+                );
+            }
 
-        return true;
+            resolve(true);
+            // this.#NOTIFY_PTR.close();
+            // this.#CONNECTION_CB.close();
+        });
     }
 }
 

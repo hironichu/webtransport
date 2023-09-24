@@ -47,6 +47,7 @@ export const symbols = {
         parameters: ["pointer", "function"],
         result: "pointer",
         callback: true,
+        nonblocking: true,
     },
     proc_server_close: {
         parameters: ["pointer"],

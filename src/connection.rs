@@ -17,24 +17,20 @@ pub struct Conn<Side: std::marker::Send> {
     pub conn: Option<Connection>,
     pub accepted_session: Option<SessionRequest>,
     pub buffer: Option<&'static mut [u8]>,
+    pub cb: extern "C" fn(u32, *mut u8, u32),
     _marker: PhantomData<Side>,
 }
 
 impl<Side: std::marker::Send> Conn<Side> {
-    pub fn datagrams(&mut self) -> Result<Datagram, usize> {
+    pub fn read_datagram(&mut self) -> Result<Datagram, ConnectionError> {
         let conn = self.conn.as_ref().unwrap();
         let stream = RUNTIME.block_on(async move { conn.receive_datagram().await });
         match stream {
             Ok(dgram) => Ok(dgram),
-            _ => {
-                //We should close the connection from Deno.
-                // conn.closed().await;
-                //TODO(hironichu): Send action to Deno to free the pointer and buffer
-                // SEND_FN.unwrap()(client, std::ptr::null_mut(), 0);
-                Err(0)
-            }
+            Err(error) => Err(error),
         }
     }
+
     pub async fn closed(&mut self) {
         let conn = self.conn.as_ref().unwrap();
         conn.closed().await
@@ -109,12 +105,16 @@ impl<Side: std::marker::Send> Conn<Side> {
 }
 
 impl Conn<Server> {
-    pub(crate) fn new(accepted_session: SessionRequest) -> Self {
+    pub(crate) fn new(
+        accepted_session: SessionRequest,
+        cb: extern "C" fn(u32, *mut u8, u32),
+    ) -> Self {
         Self {
             conn: None,
             accepted_session: Some(accepted_session),
             buffer: None,
             _marker: PhantomData,
+            cb,
         }
     }
     pub fn accepted(&mut self, conn: Connection) {
@@ -136,11 +136,12 @@ impl Conn<Server> {
 }
 
 impl Conn<Client> {
-    pub(crate) fn new(conn: Connection) -> Self {
+    pub(crate) fn new(conn: Connection, cb: extern "C" fn(u32, *mut u8, u32)) -> Self {
         Self {
             conn: Some(conn),
             accepted_session: None,
             buffer: None,
+            cb,
             _marker: PhantomData,
         }
     }

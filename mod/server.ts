@@ -144,10 +144,7 @@ export class WebTransportServer extends EventEmitter<WebTransportServerEvents> {
 
     close() {
         this.#NOTIFY_PTR.unref();
-        this.#NOTIFY_PTR.close();
-        //
         this.#CONNECTION_CB.unref();
-        this.#CONNECTION_CB.close();
 
         if (this.#SRV_PTR) {
             // await window.WTLIB.symbols.proc_server_close(this.#SRV_PTR);
@@ -166,6 +163,8 @@ export class WebTransportServer extends EventEmitter<WebTransportServerEvents> {
         });
 
         window.WTLIB.symbols.free_server(this.#SRV_PTR!);
+        this.#NOTIFY_PTR.close();
+        this.#CONNECTION_CB.close();
         this.#SRV_PTR = undefined;
         return;
     }

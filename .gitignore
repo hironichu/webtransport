@@ -23,3 +23,5 @@ Cargo.lock
 
 .env
 *.env
+
+.VSCodeCounter/

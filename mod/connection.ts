@@ -7,6 +7,7 @@ interface WebTransportCloseInfo {
     errorCode?: number;
     reason?: string;
 }
+
 export class WebTransportDatagramDuplexStream {
     #READ_BUFFER?: Uint8Array;
     readonly incomingHighWaterMark = 1;
@@ -23,25 +24,30 @@ export class WebTransportDatagramDuplexStream {
     get writable() {
         const connection = this.connection;
         return new WritableStream({
-            write(chunk) {
+            start(controller) {
+                if (!connection.pointer) {
+                    controller.error("Connection is closed");
+                    return;
+                }
+            },
+            write(chunk: Uint8Array, controller) {
                 try {
                     window.WTLIB.symbols.proc_send_datagram(
                         connection.pointer!,
                         chunk,
                         chunk.byteLength,
                     );
-
-                    return chunk.byteLength;
+                    return;
                 } catch (e) {
-                    console.error(e);
-                    return -1;
+                    controller.error(e);
+                    return;
                 }
             },
-            abort() {
-                console.error("[Error] Write aborted");
+            abort(e) {
+                console.error("[Error] Write aborted", e);
             },
             close() {
-                // console.log("[Info] Write closed");
+                console.log("[Info] Write closed");
             },
         });
     }
@@ -72,7 +78,7 @@ export class WebTransportDatagramDuplexStream {
     close() {
         this.#READ_BUFFER = undefined;
         this.readable.cancel();
-        this.writable.abort();
+        this.writable.close();
     }
 }
 
@@ -157,8 +163,6 @@ export class WebTransportReceiveStream {
 }
 
 export class WebTransportSendStream {
-    constructor(private ptr: Deno.PointerValue<unknown>) {
-    }
     static from(
         ptr: Deno.PointerValue<unknown>,
     ) {
@@ -173,8 +177,7 @@ export class WebTransportSendStream {
                     return;
                 }
                 try {
-                    console.log("Writing chunk: ", chunk);
-                    written = await window.WTLIB.symbols.proc_write(
+                    written = await window.WTLIB.symbols.proc_write_all(
                         ptr,
                         chunk,
                         chunk.byteLength,
@@ -236,8 +239,6 @@ export default class WebTransportConnection {
         this.incomingBidirectionalStreams = new ReadableStream<
             WebTransportBidirectionalStream
         >({
-            // start(_) {
-            // },
             async start(controller) {
                 try {
                     const stream = await window.WTLIB.symbols

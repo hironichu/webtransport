@@ -1,6 +1,6 @@
 use crate::{
     connection::{self, Conn, Server},
-    RUNTIME, SEND_FN, SERVER_CONN_FN,
+    RUNTIME, SERVER_CONN_FN,
 };
 use std::{path::Path, time::Duration};
 use tokio::runtime::Runtime;
@@ -10,6 +10,7 @@ use wtransport::{tls::Certificate, Endpoint, ServerConfig};
 pub struct WebTransportServer {
     pub server: Option<Endpoint<endServer>>,
     pub state: Option<bool>,
+    pub sender_fn: Option<extern "C" fn(u32, *mut u8, u32)>,
 }
 
 impl WebTransportServer {
@@ -17,7 +18,6 @@ impl WebTransportServer {
         sender_fn: Option<extern "C" fn(u32, *mut u8, u32)>,
         config: ServerConfig,
     ) -> Result<Self, u32> {
-        SEND_FN = sender_fn;
         let _guard = RUNTIME.enter();
 
         let server = match Endpoint::server(config) {
@@ -30,6 +30,7 @@ impl WebTransportServer {
         Ok(Self {
             server: Some(server),
             state: Some(true),
+            sender_fn,
         })
     }
 
@@ -40,7 +41,7 @@ impl WebTransportServer {
 
         let accepted_session = match session_request {
             Ok(session_request) => {
-                let client = Conn::<Server>::new(session_request);
+                let client = Conn::<Server>::new(session_request, self.sender_fn.unwrap());
                 Ok(client)
             }
             Err(e) => {

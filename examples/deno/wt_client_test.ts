@@ -36,21 +36,25 @@ Deno.test(
     },
     async () => {
         //THis causes panic???????
-        // const server = new WebTransportServer(4433, {
-        //     certFile: "./certs/cert.pem",
-        //     keyFile: "./certs/key.pem",
-        //     maxTimeout: 10,
-        //     keepAlive: 5,
-        // });
+        const server = new WebTransportServer("https://localhost:4433", {
+            certFile: "./certs/localhost.crt",
+            keyFile: "./certs/localhost.key",
+            maxTimeout: 10,
+            keepAlive: 3,
+        });
+        server.listen();
 
-        // const client = new WebTransport("https://localhost:4433", {
-        //     maxTimeout: 50,
-        //     keepAlive: 3,
-        //     validateCertificate: false,
-        // });
-        // server.on("connection", (_) => {
-        //     console.log("OK");
-        //     // await client.close();
-        // });
+        const client = new WebTransport("https://localhost:4433", {
+            maxTimeout: 50,
+            keepAlive: 3,
+        });
+        await client.ready;
+        server.on("connection", async (_) => {
+            setTimeout(async () => {
+                await client.closed;
+            }, 2000);
+        });
+        console.log("Closing");
+        server.close();
     },
 );
