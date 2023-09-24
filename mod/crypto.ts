@@ -1,7 +1,7 @@
 if (import.meta.main) {
     throw new Error("This module is not meant to be imported.");
 }
-import { join } from "https://deno.land/std@0.184.0/path/mod.ts";
+import { join } from "./deps.ts";
 import { encodeBuf } from "./utils.ts";
 export function base64ToArrayBuffer(base64: string) {
     const binaryString = atob(base64);

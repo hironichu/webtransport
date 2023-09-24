@@ -1,6 +1,6 @@
 use crate::{
-    connection::{self, Client, Conn},
-    CLIENT_CONN_FN, RUNTIME,
+    connection::{Client, Conn},
+    RUNTIME,
 };
 use std::{io::Error, time::Duration};
 use wtransport::endpoint::endpoint_side::Client as endClient;
@@ -8,16 +8,12 @@ use wtransport::{ClientConfig, Endpoint};
 
 pub struct WebTransportClient {
     pub client: Option<Endpoint<endClient>>,
-    pub conn_cb: Option<extern "C" fn(*mut Conn<connection::Client>)>,
+    // pub conn_cb: Option<extern "C" fn(*mut Conn<connection::Client>)>,
     pub state: Option<bool>,
-    pub sender_cb: extern "C" fn(u32, *mut u8, u32),
 }
 
 impl WebTransportClient {
-    pub(crate) fn new(
-        sender_fn: Option<extern "C" fn(u32, *mut u8, u32)>,
-        config: ClientConfig,
-    ) -> Result<Self, Error> {
+    pub(crate) fn new(config: ClientConfig) -> Result<Self, Error> {
         let _guard = RUNTIME.enter();
 
         let client = match Endpoint::client(config) {
@@ -27,42 +23,41 @@ impl WebTransportClient {
             }
         };
         Ok(Self {
-            sender_cb: sender_fn.unwrap(),
-            conn_cb: None,
+            // conn_cb: None,
             client: Some(client),
             state: Some(true),
         })
     }
 
-    pub(crate) fn connect(&'static mut self, url: String) {
+    pub(crate) fn connect(&'static mut self, url: String) -> *mut Conn<Client> {
         RUNTIME.block_on(async move {
             let client = self.client.as_mut().unwrap();
-            let sender_cb = self.sender_cb;
+
             match client.connect(url).await {
                 Ok(conn) => {
                     let client = Conn::<Client>::new(conn);
-                    let client_ptr = Box::into_raw(Box::new(client));
-                    unsafe {
-                        CLIENT_CONN_FN.unwrap()(client_ptr);
-                    }
+                    return Box::into_raw(Box::new(client));
                 }
-                Err(err) => {
-                    println!("DBG: Error connecting to server. Err: {}", err.to_string());
-                    let mut msg = err.to_string();
-                    sender_cb(141, msg.as_mut_ptr(), msg.len() as u32);
+                Err(_err) => {
+                    //return null ptr
+                    return std::ptr::null_mut();
+                    // println!("DBG: Error connecting to server. Err: {}", err.to_string());
+                    // let mut msg = err.to_string();
+                    // errocb(141, msg.as_mut_ptr(), msg.len() as u32);
+                    //sender_cb(141, msg.as_mut_ptr(), msg.len() as u32);
                 }
             }
-        });
+        })
     }
 }
 
 #[no_mangle]
 pub extern "C" fn proc_client_init(
-    send_func: Option<extern "C" fn(u32, *mut u8, u32)>,
+    // send_func: Option<extern "C" fn(u32, *mut u8, u32)>,
     keepalive: u64,
     timeout: u64,
 ) -> *mut WebTransportClient {
-    assert!(!send_func.is_none());
+    // assert!(!send_func.is_none());
 
     let keepalive = if keepalive == 0 {
         None
@@ -82,29 +77,23 @@ pub extern "C" fn proc_client_init(
         .max_idle_timeout(timeout)
         .unwrap()
         .build();
-    let client = WebTransportClient::new(send_func, config);
+    let client = WebTransportClient::new(config);
     match client {
         Ok(client) => Box::into_raw(Box::new(client)),
-        Err(error) => {
-            let message = error.kind();
-            let mut msg = message.to_string();
-            send_func.unwrap()(10, msg.as_mut_ptr(), msg.len() as u32);
-            std::ptr::null_mut()
-        }
+        Err(_error) => std::ptr::null_mut(),
     }
 }
 #[no_mangle]
 pub unsafe extern "C" fn proc_client_connect(
     client: *mut WebTransportClient,
-    cb: Option<extern "C" fn(*mut Conn<Client>)>,
+    // cb: Option<extern "C" fn(*mut Conn<Client>)>,
     url: *const u8,
     url_len: usize,
 ) {
     let url = ::std::slice::from_raw_parts(url, url_len);
     let url = std::str::from_utf8(url).unwrap();
     let client = &mut *client;
-    client.conn_cb = cb;
-    CLIENT_CONN_FN = cb;
+    // client.conn_cb = cb;
     client.connect(url.to_string());
 }
 

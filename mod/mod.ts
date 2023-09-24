@@ -1,8 +1,5 @@
-import {
-    symbols,
-    WebTransportOptions,
-    WebTransportServerOptions,
-} from "./interface.ts";
+import { WebTransportOptions, WebTransportServerOptions } from "./interface.ts";
+import { symbols } from "./symbols.ts";
 import { LIB } from "./lib.ts";
 
 if (window.WTLIB_STATE) {

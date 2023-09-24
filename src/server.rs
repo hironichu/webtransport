@@ -1,6 +1,6 @@
 use crate::{
     connection::{self, Conn, Server},
-    RUNTIME, SEND_FN, SERVER_CONN_FN,
+    RUNTIME,
 };
 use std::{path::Path, time::Duration};
 use tokio::runtime::Runtime;
@@ -13,11 +13,7 @@ pub struct WebTransportServer {
 }
 
 impl WebTransportServer {
-    pub(crate) unsafe fn new(
-        sender_fn: Option<extern "C" fn(u32, *mut u8, u32)>,
-        config: ServerConfig,
-    ) -> Result<Self, u32> {
-        SEND_FN = sender_fn;
+    pub(crate) unsafe fn new(config: ServerConfig) -> Result<Self, u32> {
         let _guard = RUNTIME.enter();
 
         let server = match Endpoint::server(config) {
@@ -75,7 +71,6 @@ impl WebTransportServer {
 
 #[no_mangle]
 pub unsafe extern "C" fn proc_server_init(
-    send_func: Option<extern "C" fn(u32, *mut u8, u32)>,
     port: u16,
     migration: bool,
     keepalive: u64,
@@ -85,7 +80,6 @@ pub unsafe extern "C" fn proc_server_init(
     key_path: *const u8,
     key_path_len: usize,
 ) -> *mut WebTransportServer {
-    assert!(!send_func.is_none());
     assert!(port > 0);
 
     let cert_path = ::std::slice::from_raw_parts(cert_path, cert_path_len);
@@ -114,7 +108,7 @@ pub unsafe extern "C" fn proc_server_init(
         .unwrap()
         .allow_migration(migration)
         .build();
-    let server = WebTransportServer::new(send_func, config);
+    let server = WebTransportServer::new(config);
     match server {
         Ok(server) => {
             let server_ptr = Box::into_raw(Box::new(server));
@@ -129,17 +123,17 @@ pub unsafe extern "C" fn proc_server_init(
 #[no_mangle]
 pub unsafe extern "C" fn proc_server_listen(
     server_ptr: *mut WebTransportServer,
-    cb: Option<extern "C" fn(*mut Conn<connection::Server>)>,
+    cb: extern "C" fn(*mut Conn<connection::Server>),
 ) {
     assert!(!server_ptr.is_null());
     let server = &mut *server_ptr;
-    SERVER_CONN_FN = cb;
+
     RUNTIME.spawn(async move {
         loop {
             let conn = server.handle_sess_in().await;
             match conn {
                 Ok(conn) => {
-                    SERVER_CONN_FN.unwrap()(conn);
+                    cb(conn);
                 }
                 Err(e) => {
                     println!("Error accepting sess in : {}", e);

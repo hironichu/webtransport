@@ -23,6 +23,6 @@ await writer.write(
 );
 console.log("Stream opened");
 
-Deno.serve((req) => {
-    return new Response("Hello " + req.url);
-});
+// Deno.serve((req) => {
+//     return new Response("Hello " + req.url);
+// });

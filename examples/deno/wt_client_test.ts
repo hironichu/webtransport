@@ -42,7 +42,7 @@ Deno.test(
             maxTimeout: 10,
             keepAlive: 3,
         });
-        await server.listen();
+        await server.ready;
 
         const client = new WebTransport("https://localhost:4433", {
             maxTimeout: 50,

@@ -1,14 +1,11 @@
 use crate::{
     connection::{Conn, Server},
-    RUNTIME, SEND_FN,
+    RUNTIME,
 };
 
 use std::slice::from_raw_parts_mut;
 use tokio::runtime::Runtime;
-use wtransport::{
-    error::{ConnectionError, SendDatagramError},
-    RecvStream, SendStream,
-};
+use wtransport::{error::ConnectionError, RecvStream, SendStream};
 
 //impl a way to identify ConnectionError with a number for JS
 pub struct ConnectionErrorWrapper(pub ConnectionError);
@@ -27,9 +24,9 @@ impl From<ConnectionErrorWrapper> for u32 {
     }
 }
 
-unsafe fn send_error(code: u32, message: String) {
+unsafe fn send_error(code: u32, message: String, errorcb: extern "C" fn(u32, *mut u8, u32)) {
     let mut msg = message;
-    SEND_FN.unwrap()(code, msg.as_mut_ptr(), msg.len() as u32);
+    errorcb(code, msg.as_mut_ptr(), msg.len() as u32);
 }
 
 #[repr(C)]
@@ -49,6 +46,7 @@ pub unsafe extern "C" fn proc_send_datagram(
     connptr: *mut Conn<Server>,
     buf: *const u8,
     buflen: u32,
+    errorcb: extern "C" fn(u32, *mut u8, u32),
 ) {
     assert!(!connptr.is_null());
 
@@ -58,21 +56,22 @@ pub unsafe extern "C" fn proc_send_datagram(
     match conn.send_datagram(buf) {
         Ok(_) => {}
         Err(err) => {
+            send_error(200, err.to_string(), errorcb);
             //TODO: Handle error better
-            match err {
-                SendDatagramError::NotConnected => {
-                    println!("DBG: Rust Connection closed");
-                    SEND_FN.unwrap()(161, vec![0].as_mut_ptr(), 1);
-                }
-                SendDatagramError::TooLarge => {
-                    println!("DBG: Rust Too large");
-                    SEND_FN.unwrap()(162, vec![0].as_mut_ptr(), 1);
-                }
-                SendDatagramError::UnsupportedByPeer => {
-                    println!("DBG: Rust not supported by peer");
-                    SEND_FN.unwrap()(163, vec![0].as_mut_ptr(), 1);
-                }
-            };
+            // match err {
+            //     SendDatagramError::NotConnected => {
+            //         println!("DBG: Rust Connection closed");
+            //         SEND_FN.unwrap()(161, vec![0].as_mut_ptr(), 1);
+            //     }
+            //     SendDatagramError::TooLarge => {
+            //         println!("DBG: Rust Too large");
+            //         SEND_FN.unwrap()(162, vec![0].as_mut_ptr(), 1);
+            //     }
+            //     SendDatagramError::UnsupportedByPeer => {
+            //         println!("DBG: Rust not supported by peer");
+            //         SEND_FN.unwrap()(163, vec![0].as_mut_ptr(), 1);
+            //     }
+            // };
         }
     }
 }
@@ -86,7 +85,11 @@ pub unsafe extern "C" fn proc_send_datagram(
 /// 174 : QuicProto
 /// 175 : LocallyClosed
 #[no_mangle]
-pub unsafe extern "C" fn proc_recv_datagram(conn_ptr: *mut Conn<Server>, buff: *mut u8) -> usize {
+pub unsafe extern "C" fn proc_recv_datagram(
+    conn_ptr: *mut Conn<Server>,
+    buff: *mut u8,
+    errorcb: extern "C" fn(u32, *mut u8, u32),
+) -> usize {
     assert!(!conn_ptr.is_null());
 
     let client = &mut *conn_ptr;
@@ -98,7 +101,7 @@ pub unsafe extern "C" fn proc_recv_datagram(conn_ptr: *mut Conn<Server>, buff: *
         }
         Err(error) => {
             let message = error.to_string();
-            send_error(ConnectionErrorWrapper(error).into(), message);
+            send_error(ConnectionErrorWrapper(error).into(), message, errorcb);
             0
         }
     }
@@ -108,7 +111,10 @@ pub unsafe extern "C" fn proc_recv_datagram(conn_ptr: *mut Conn<Server>, buff: *
 /// Error Codes :
 /// 150 : Connection closed
 #[no_mangle]
-pub unsafe extern "C" fn proc_open_bi(connptr: *mut Conn<Server>) -> *mut BidiStreams {
+pub unsafe extern "C" fn proc_open_bi(
+    connptr: *mut Conn<Server>,
+    errorcb: extern "C" fn(u32, *mut u8, u32),
+) -> *mut BidiStreams {
     assert!(!connptr.is_null());
 
     let _client = &mut *connptr;
@@ -123,7 +129,7 @@ pub unsafe extern "C" fn proc_open_bi(connptr: *mut Conn<Server>) -> *mut BidiSt
         }
         Err(error) => {
             let message = error.to_string();
-            send_error(ConnectionErrorWrapper(error).into(), message);
+            send_error(ConnectionErrorWrapper(error).into(), message, errorcb);
             std::ptr::null_mut()
         }
     }
@@ -131,7 +137,10 @@ pub unsafe extern "C" fn proc_open_bi(connptr: *mut Conn<Server>) -> *mut BidiSt
 
 /// Open a unidirectional stream.
 #[no_mangle]
-pub unsafe extern "C" fn proc_open_uni(connptr: *mut Conn<Server>) -> *mut BidiStreams {
+pub unsafe extern "C" fn proc_open_uni(
+    connptr: *mut Conn<Server>,
+    errorcb: extern "C" fn(u32, *mut u8, u32),
+) -> *mut BidiStreams {
     assert!(!connptr.is_null());
 
     let _client = &mut *connptr;
@@ -143,7 +152,7 @@ pub unsafe extern "C" fn proc_open_uni(connptr: *mut Conn<Server>) -> *mut BidiS
         })),
         Err(error) => {
             let message = error.to_string();
-            send_error(ConnectionErrorWrapper(error).into(), message);
+            send_error(ConnectionErrorWrapper(error).into(), message, errorcb);
             std::ptr::null_mut()
         }
     }
@@ -151,7 +160,10 @@ pub unsafe extern "C" fn proc_open_uni(connptr: *mut Conn<Server>) -> *mut BidiS
 
 /// Accept a unidirectional stream.
 #[no_mangle]
-pub unsafe extern "C" fn proc_accept_uni(connptr: *mut Conn<Server>) -> *mut BidiStreams {
+pub unsafe extern "C" fn proc_accept_uni(
+    connptr: *mut Conn<Server>,
+    errorcb: extern "C" fn(u32, *mut u8, u32),
+) -> *mut BidiStreams {
     assert!(!connptr.is_null());
 
     let _client = &mut *connptr;
@@ -163,7 +175,7 @@ pub unsafe extern "C" fn proc_accept_uni(connptr: *mut Conn<Server>) -> *mut Bid
         })),
         Err(err) => {
             let mut msg = err.to_string();
-            SEND_FN.unwrap()(160, msg.as_mut_ptr(), msg.len() as u32);
+            send_error(ConnectionErrorWrapper(err).into(), msg, errorcb);
             std::ptr::null_mut()
         }
     }
@@ -171,7 +183,10 @@ pub unsafe extern "C" fn proc_accept_uni(connptr: *mut Conn<Server>) -> *mut Bid
 
 /// Accept a bidirectional stream.
 #[no_mangle]
-pub unsafe extern "C" fn proc_accept_bi(connptr: *mut Conn<Server>) -> *mut BidiStreams {
+pub unsafe extern "C" fn proc_accept_bi(
+    connptr: *mut Conn<Server>,
+    errorcb: extern "C" fn(u32, *mut u8, u32),
+) -> *mut BidiStreams {
     assert!(!connptr.is_null());
 
     let _client = &mut *connptr;
@@ -186,7 +201,7 @@ pub unsafe extern "C" fn proc_accept_bi(connptr: *mut Conn<Server>) -> *mut Bidi
         }
         Err(err) => {
             let mut msg = err.to_string();
-            SEND_FN.unwrap()(155, msg.as_mut_ptr(), msg.len() as u32);
+            send_error(ConnectionErrorWrapper(err).into(), msg, errorcb);
             std::ptr::null_mut()
         }
     }
@@ -198,6 +213,7 @@ pub unsafe extern "C" fn proc_write(
     stream_ptr: *mut BidiStreams,
     buf: *const u8,
     buflen: u32,
+    errorcb: extern "C" fn(u32, *mut u8, u32),
 ) -> usize {
     assert!(!stream_ptr.is_null());
     assert!(buflen > 0);
@@ -210,7 +226,7 @@ pub unsafe extern "C" fn proc_write(
             Ok(len) => len,
             Err(err) => {
                 let mut str = err.to_string();
-                SEND_FN.unwrap()(153, str.as_mut_ptr(), str.len() as u32);
+                // SEND_FN.unwrap()(153, str.as_mut_ptr(), str.len() as u32);
                 0
             }
         }
@@ -223,6 +239,7 @@ pub unsafe extern "C" fn proc_write_all(
     stream_ptr: *mut BidiStreams,
     buf: *const u8,
     buflen: u32,
+    errorcb: extern "C" fn(u32, *mut u8, u32),
 ) -> u32 {
     assert!(!stream_ptr.is_null());
     assert!(buflen > 0);
@@ -234,7 +251,7 @@ pub unsafe extern "C" fn proc_write_all(
             Ok(_) => buflen,
             Err(err) => {
                 let mut str = err.to_string();
-                SEND_FN.unwrap()(153, str.as_mut_ptr(), str.len() as u32);
+                // SEND_FN.unwrap()(153, str.as_mut_ptr(), str.len() as u32);
                 0
             }
         }
@@ -251,6 +268,7 @@ pub unsafe extern "C" fn proc_read(
     stream_ptr: *mut BidiStreams,
     buf: *mut u8,
     buflen: u32,
+    errorcb: extern "C" fn(u32, *mut u8, u32),
 ) -> usize {
     assert!(!stream_ptr.is_null());
     assert!(buflen > 0);
@@ -262,7 +280,7 @@ pub unsafe extern "C" fn proc_read(
             Ok(len) => len,
             Err(err) => {
                 let mut strs = err.to_string();
-                SEND_FN.unwrap()(154, strs.as_mut_ptr(), strs.len() as u32);
+                // SEND_FN.unwrap()(154, strs.as_mut_ptr(), strs.len() as u32);
                 None
             }
         }
@@ -291,33 +309,41 @@ pub unsafe extern "C" fn proc_sendstream_id(stream_ptr: *mut BidiStreams) -> u64
 
 /// Close a send stream.
 #[no_mangle]
-pub unsafe extern "C" fn proc_sendstream_finish(stream_ptr: *mut BidiStreams) {
+pub unsafe extern "C" fn proc_sendstream_finish(stream_ptr: *mut BidiStreams) -> u32 {
     assert!(!stream_ptr.is_null());
     let stream = &mut *stream_ptr;
     let sendstream = stream.send.as_mut().unwrap();
     RUNTIME.block_on(async move {
         match sendstream.finish().await {
-            Ok(_) => drop(stream_ptr.as_ref()),
+            Ok(_) => {
+                drop(stream_ptr.as_ref());
+                1
+            }
             Err(err) => {
                 let mut msg = err.to_string();
-                SEND_FN.unwrap()(150, msg.as_mut_ptr(), msg.len() as u32);
+                // SEND_FN.unwrap()(150, msg.as_mut_ptr(), msg.len() as u32);
+                0
             }
         }
-    });
+    })
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn proc_recvtream_stop(stream_ptr: *mut BidiStreams) {
+pub unsafe extern "C" fn proc_recvtream_stop(stream_ptr: *mut BidiStreams) -> u32 {
     assert!(!stream_ptr.is_null());
     let stream = &mut *stream_ptr;
     RUNTIME.block_on(async move {
         match stream.recv.as_mut().unwrap().stop(0).await {
-            Ok(_) => drop(stream_ptr.as_ref()),
+            Ok(_) => {
+                // drop(stream_ptr);
+                1
+            }
             Err(_) => {
-                SEND_FN.unwrap()(158, std::ptr::null_mut(), 0);
+                // SEND_FN.unwrap()(158, std::ptr::null_mut(), 0);
+                0
             }
         }
-    });
+    })
 }
 #[no_mangle]
 pub unsafe extern "C" fn proc_sendstream_priority(stream_ptr: *mut BidiStreams) -> i32 {

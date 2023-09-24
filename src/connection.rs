@@ -94,12 +94,16 @@ impl<Side: std::marker::Send> Conn<Side> {
             Some(reason) => reason,
             None => b"closed",
         };
-        self.conn
-            .as_ref()
-            .unwrap()
-            .close(VarInt::from_u32(code), reason);
-
-        drop(self.conn.take())
+        let conn = self.conn.as_ref();
+        match conn {
+            Some(conn) => {
+                conn.close(VarInt::from_u32(code), reason);
+                drop(self.conn.take())
+            }
+            None => {
+                println!("Connection is None");
+            }
+        }
     }
 }
 

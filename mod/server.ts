@@ -8,7 +8,7 @@ import {
     type WebTransportServerOptions,
     WebTransportServerOptions as ServerOpts,
 } from "./interface.ts";
-import { encodeBuf } from "./utils.ts";
+import { decoder, encodeBuf } from "./utils.ts";
 
 export type WebTransportServerEvents = {
     listening: [Event];
@@ -65,7 +65,6 @@ export class WebTransportServer extends EventEmitter<WebTransportServerEvents> {
         const keybuf = encodeBuf(key);
 
         this.#SRV_PTR = window.WTLIB.symbols.proc_server_init(
-            this.#NOTIFY_PTR.pointer,
             parseInt(_url.port),
             true,
             _options.keepAlive,
@@ -80,7 +79,7 @@ export class WebTransportServer extends EventEmitter<WebTransportServerEvents> {
             throw new Error("Failed to initialize server");
         }
 
-        this.#NOTIFY_PTR.ref();
+        // this.#NOTIFY_PTR.ref();
         this.#CONNECTION_CB.ref();
         this.emit("listening", new Event("listening"));
     }
@@ -124,52 +123,52 @@ export class WebTransportServer extends EventEmitter<WebTransportServerEvents> {
         buffer: Deno.PointerValue<unknown>,
         buflen: number,
     ) {
-        console.info("CB NOTIFY CALLEd");
-        const code = _code as bigint;
-        console.log(code);
-        if (buflen < 0) {
-            return;
-        }
-        const pointer = Deno.UnsafePointerView.getArrayBuffer(
-            buffer as unknown as NonNullable<Deno.PointerValue>,
-            buflen,
-        );
-        const event = new MessageEvent("message", {
-            data: pointer,
-        });
+        //TODO(hironichu): This callback should implement more arguments to get an optional pointer to the connection its referring to
+        const code = _code as number;
 
-        //TODO(hironichu): Implement Error/event catching from rust to free the memory once a connection drop or if something else happens.
-        this.emit("event", event);
+        console.info("[CB SERVER] Got code : ", code);
+
+        if (buflen > 1) {
+            const pointer = Deno.UnsafePointerView.getArrayBuffer(
+                buffer as unknown as NonNullable<Deno.PointerValue>,
+                buflen,
+            );
+            const event = new MessageEvent("message", {
+                data: decoder.decode(pointer),
+            });
+            console.log("Event data : ", event.data);
+            this.emit("event", event);
+        }
+        if (code >= 130) {
+            // Promise.race([this.closed]);
+            console.error("[CB SERVER] We should close the connection");
+            // throw new Error(data);
+        }
     }
 
-    async close() {
-        this.#NOTIFY_PTR.unref();
-        this.#CONNECTION_CB.unref();
-
-        this.emit("close", new CloseEvent("close"));
+    close() {
         //free all the connections
-        this.connections.forEach(async (conn, id) => {
-            if (conn.state != "closed") {
-                await window.WTLIB.symbols.proc_client_close(
-                    this.#SRV_PTR!,
+        this.connections.forEach((conn, id) => {
+            if (conn.state != "closed" && this.#SRV_PTR && conn.pointer) {
+                window.WTLIB.symbols.proc_client_close(
+                    this.#SRV_PTR,
                     conn.pointer,
                 );
+                window.WTLIB.symbols.free_conn(conn.pointer);
+                conn.state = "closed";
             }
-            window.WTLIB.symbols.free_conn(conn.pointer);
             this.connections.delete(id);
         });
         if (this.#SRV_PTR) {
             window.WTLIB.symbols.proc_server_close(this.#SRV_PTR);
-            window.WTLIB.symbols.free_server(this.#SRV_PTR!);
-            this.#NOTIFY_PTR.close();
-            this.#CONNECTION_CB.close();
         }
-
+        this.#NOTIFY_PTR.close();
+        this.#CONNECTION_CB.close();
         this.#SRV_PTR = undefined;
-        console.log("Server closed");
-        return;
+        console.info("[SERVER] Server closed");
     }
     get ready() {
+        console.info("[SERVER] Server ready");
         return window.WTLIB.symbols.proc_server_listen(
             this.#SRV_PTR!,
             this.#CONNECTION_CB.pointer,
