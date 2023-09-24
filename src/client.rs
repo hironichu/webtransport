@@ -97,16 +97,10 @@ pub unsafe extern "C" fn proc_client_connect(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn proc_client_close(
-    client_ptr: *mut WebTransportClient,
-    conn: *mut Conn<Client>,
-) -> usize {
-    assert!(!client_ptr.is_null());
+pub unsafe extern "C" fn proc_client_close(conn: *mut Conn<Client>) -> usize {
     assert!(!conn.is_null());
     println!("CLIENT CLOSE CALLED");
-    let client = &mut *client_ptr;
     let conn = &mut *conn;
-    client.state = Some(false);
     conn.close(32, Some(b"NO"));
     0
 }

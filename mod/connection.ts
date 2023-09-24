@@ -173,7 +173,6 @@ export default class WebTransportConnection {
         this.state = "closed";
         window.WTLIB.symbols.proc_client_close(
             this.pointer,
-            this.pointer,
         );
     }
 }

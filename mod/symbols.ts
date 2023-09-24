@@ -57,7 +57,7 @@ export const symbols = {
         nonblocking: true,
     },
     proc_client_close: {
-        parameters: ["pointer", "pointer"],
+        parameters: ["pointer"],
         result: "void",
     },
     // Shared symbols

@@ -102,7 +102,6 @@ export class WebTransportServer extends EventEmitter<WebTransportServerEvents> {
         this.connections.forEach((conn, id) => {
             if (conn.state != "closed" && this.#SRV_PTR && conn.pointer) {
                 window.WTLIB.symbols.proc_client_close(
-                    this.#SRV_PTR,
                     conn.pointer,
                 );
                 window.WTLIB.symbols.free_conn(conn.pointer);
@@ -113,7 +112,7 @@ export class WebTransportServer extends EventEmitter<WebTransportServerEvents> {
         if (this.#SRV_PTR) {
             await window.WTLIB.symbols.proc_server_close(this.#SRV_PTR);
         }
-
+        this.#CONNECTION_CB.close();
         this.#SRV_PTR = undefined;
         console.info("[SERVER] Server closed");
     }

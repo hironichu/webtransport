@@ -185,7 +185,6 @@ export class WebTransport {
 
             if (this.#CLIENT_PTR && this.conn) {
                 window.WTLIB.symbols.proc_client_close(
-                    this.#CLIENT_PTR,
                     this.conn!,
                 );
             }
