@@ -110,14 +110,10 @@ pub unsafe extern "C" fn proc_server_init(
         .allow_migration(migration)
         .build();
     let server = WebTransportServer::new(config);
+
     match server {
-        Ok(server) => {
-            let server_ptr = Box::into_raw(Box::new(server));
-            server_ptr
-        }
-        Err(_) => {
-            panic!("Error creating server")
-        }
+        Ok(server) => Box::into_raw(Box::new(server)),
+        Err(_) => std::ptr::null_mut(),
     }
 }
 
