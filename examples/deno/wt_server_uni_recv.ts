@@ -30,22 +30,10 @@ server.on("listening", () => {
 
 server.on("connection", async (transport) => {
     console.log("New client");
-    setTimeout(async () => {
-        console.log("Client client after 5 seconds");
-        await client.closed;
-    }, 5000);
+
     const stream = transport.incomingUnidirectionalStreams;
     const reader = stream.getReader();
-    while (true) {
-        const { value, done } = await reader.read();
-        if (done) break;
-        const DATA = value!.getReader();
-        console.log("New incoming stream opened ", value);
-        const { value: val, done: _ } = await DATA.read();
-        console.log(val);
-
-        if (done) break;
-    }
+    const first = await reader.read();
 });
 
 await server.ready;

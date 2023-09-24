@@ -174,7 +174,7 @@ pub unsafe extern "C" fn proc_accept_uni(
             recv: Some(stream),
         })),
         Err(err) => {
-            let mut msg = err.to_string();
+            let msg = err.to_string();
             send_error(ConnectionErrorWrapper(err).into(), msg, errorcb);
             std::ptr::null_mut()
         }
@@ -200,7 +200,7 @@ pub unsafe extern "C" fn proc_accept_bi(
             Box::into_raw(Box::new(bidi))
         }
         Err(err) => {
-            let mut msg = err.to_string();
+            let msg = err.to_string();
             send_error(ConnectionErrorWrapper(err).into(), msg, errorcb);
             std::ptr::null_mut()
         }
@@ -225,7 +225,8 @@ pub unsafe extern "C" fn proc_write(
         match writer.write(buf).await {
             Ok(len) => len,
             Err(err) => {
-                let mut str = err.to_string();
+                let str = err.to_string();
+                send_error(153, str, errorcb);
                 // SEND_FN.unwrap()(153, str.as_mut_ptr(), str.len() as u32);
                 0
             }
@@ -250,7 +251,8 @@ pub unsafe extern "C" fn proc_write_all(
         match writer.write_all(buf).await {
             Ok(_) => buflen,
             Err(err) => {
-                let mut str = err.to_string();
+                let str = err.to_string();
+                send_error(153, str, errorcb);
                 // SEND_FN.unwrap()(153, str.as_mut_ptr(), str.len() as u32);
                 0
             }
@@ -279,8 +281,8 @@ pub unsafe extern "C" fn proc_read(
         match stream.recv.as_mut().unwrap().read(buf).await {
             Ok(len) => len,
             Err(err) => {
-                let mut strs = err.to_string();
-                // SEND_FN.unwrap()(154, strs.as_mut_ptr(), strs.len() as u32);
+                let strs = err.to_string();
+                send_error(154, strs, errorcb);
                 None
             }
         }
@@ -315,12 +317,9 @@ pub unsafe extern "C" fn proc_sendstream_finish(stream_ptr: *mut BidiStreams) ->
     let sendstream = stream.send.as_mut().unwrap();
     RUNTIME.block_on(async move {
         match sendstream.finish().await {
-            Ok(_) => {
-                drop(stream_ptr.as_ref());
-                1
-            }
-            Err(err) => {
-                let mut msg = err.to_string();
+            Ok(_) => 1,
+            Err(_err) => {
+                // let mut msg = err.to_string();
                 // SEND_FN.unwrap()(150, msg.as_mut_ptr(), msg.len() as u32);
                 0
             }
@@ -364,6 +363,18 @@ pub unsafe extern "C" fn proc_sendstream_set_priority(
     priority
 }
 
+//add all the methods to get authority, headers, etc
+#[no_mangle]
+pub unsafe extern "C" fn free_streams(stream_ptr: *mut BidiStreams) {
+    let _stream = &mut *stream_ptr;
+    drop(_stream.send.take());
+    drop(_stream.recv.take());
+}
+#[no_mangle]
+pub unsafe extern "C" fn proc_closed(conn: *mut Conn<Server>) {
+    let _conn = &mut *conn;
+    RUNTIME.block_on(async move { _conn.closed().await });
+}
 #[no_mangle]
 pub unsafe extern "C" fn free_conn(_: *mut Conn<Server>) {}
 

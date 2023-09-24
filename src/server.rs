@@ -142,6 +142,37 @@ pub unsafe extern "C" fn proc_server_listen(
         }
     });
 }
+#[no_mangle]
+pub extern "C" fn proc_server_client_authority(conn: *mut Conn<connection::Server>) -> *const u8 {
+    assert!(!conn.is_null());
+    let conn = unsafe { &mut *conn };
+    let authority = conn.authority();
+    authority.as_ptr()
+}
+#[no_mangle]
+pub extern "C" fn proc_server_client_headers(
+    conn: *mut Conn<connection::Server>,
+    buflen: *mut u32,
+) -> *const u8 {
+    assert!(!conn.is_null());
+    let conn = unsafe { &mut *conn };
+    let mut json = serde_json::to_string(&conn.headers()).unwrap();
+    unsafe {
+        *buflen = json.len() as u32;
+    }
+    json.push('\0');
+    json.as_ptr()
+}
+
+#[no_mangle]
+pub extern "C" fn proc_server_client_path(conn: *mut Conn<connection::Server>) -> *const u8 {
+    assert!(!conn.is_null());
+    let conn = unsafe { &mut *conn };
+    let path = conn.path();
+    let mut path = path.to_string();
+    path.push('\0');
+    path.as_ptr()
+}
 
 #[no_mangle]
 pub unsafe extern "C" fn proc_server_close(server_ptr: *mut WebTransportServer) -> usize {
