@@ -5,7 +5,7 @@ import { assert } from "https://deno.land/std@0.202.0/assert/mod.ts";
 import { WebTransportServer } from "../../mod/server.ts";
 // //add certs cleanup methods after tests
 // const certPath = join(Deno.cwd(), "./certs/");
-async function sleep(msec: number) {
+async function _sleep(msec: number) {
     await new Promise((res, _rej) => setTimeout(res, msec));
 }
 
