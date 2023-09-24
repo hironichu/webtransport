@@ -10,7 +10,7 @@ pub struct WebTransportClient {
     pub client: Option<Endpoint<endClient>>,
     pub conn_cb: Option<extern "C" fn(*mut Conn<connection::Client>)>,
     pub state: Option<bool>,
-    pub cb: extern "C" fn(u32, *mut u8, u32),
+    pub sender_cb: extern "C" fn(u32, *mut u8, u32),
 }
 
 impl WebTransportClient {
@@ -27,7 +27,7 @@ impl WebTransportClient {
             }
         };
         Ok(Self {
-            cb: sender_fn.unwrap(),
+            sender_cb: sender_fn.unwrap(),
             conn_cb: None,
             client: Some(client),
             state: Some(true),
@@ -37,17 +37,17 @@ impl WebTransportClient {
     pub(crate) fn connect(&'static mut self, url: String) {
         RUNTIME.block_on(async move {
             let client = self.client.as_mut().unwrap();
-
-            let sender_cb = self.cb;
+            let sender_cb = self.sender_cb;
             match client.connect(url).await {
                 Ok(conn) => {
-                    let client = Conn::<Client>::new(conn, sender_cb);
+                    let client = Conn::<Client>::new(conn);
                     let client_ptr = Box::into_raw(Box::new(client));
                     unsafe {
                         CLIENT_CONN_FN.unwrap()(client_ptr);
                     }
                 }
                 Err(err) => {
+                    println!("DBG: Error connecting to server. Err: {}", err.to_string());
                     let mut msg = err.to_string();
                     sender_cb(141, msg.as_mut_ptr(), msg.len() as u32);
                 }
@@ -115,10 +115,12 @@ pub unsafe extern "C" fn proc_client_close(
 ) -> usize {
     assert!(!client_ptr.is_null());
     assert!(!conn.is_null());
+    println!("CALLED");
     let client = &mut *client_ptr;
     let conn = &mut *conn;
     client.state = Some(false);
-    RUNTIME.block_on(async move { conn.closed().await });
+    // RUNTIME.block_on(async move { conn.close(32, Some(b"NO")) });
+    conn.close(32, Some(b"NO"));
     0
 }
 

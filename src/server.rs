@@ -1,6 +1,6 @@
 use crate::{
     connection::{self, Conn, Server},
-    RUNTIME, SERVER_CONN_FN,
+    RUNTIME, SEND_FN, SERVER_CONN_FN,
 };
 use std::{path::Path, time::Duration};
 use tokio::runtime::Runtime;
@@ -10,7 +10,6 @@ use wtransport::{tls::Certificate, Endpoint, ServerConfig};
 pub struct WebTransportServer {
     pub server: Option<Endpoint<endServer>>,
     pub state: Option<bool>,
-    pub sender_fn: Option<extern "C" fn(u32, *mut u8, u32)>,
 }
 
 impl WebTransportServer {
@@ -18,6 +17,7 @@ impl WebTransportServer {
         sender_fn: Option<extern "C" fn(u32, *mut u8, u32)>,
         config: ServerConfig,
     ) -> Result<Self, u32> {
+        SEND_FN = sender_fn;
         let _guard = RUNTIME.enter();
 
         let server = match Endpoint::server(config) {
@@ -30,42 +30,44 @@ impl WebTransportServer {
         Ok(Self {
             server: Some(server),
             state: Some(true),
-            sender_fn,
         })
     }
 
     pub(crate) async unsafe fn handle_sess_in(&mut self) -> Result<*mut Conn<Server>, u32> {
-        let incoming_session = self.server.as_mut().unwrap().accept().await;
+        let incoming_session = self.server.as_mut();
+        match incoming_session {
+            Some(incoming_session) => {
+                let session_request = incoming_session.accept().await;
 
-        let session_request = incoming_session.await;
+                let accepted_session = match session_request.await {
+                    Ok(session_request) => {
+                        let client = Conn::<Server>::new(session_request);
+                        Ok(client)
+                    }
+                    Err(e) => Err(e),
+                };
+                match accepted_session {
+                    Ok(mut sess) => match sess.accept().await {
+                        Ok(conn) => {
+                            sess.accepted(conn);
+                            let client_ptr = Box::into_raw(Box::new(sess));
+                            Ok(client_ptr)
+                        }
+                        Err(e) => {
+                            println!("Error accepting connection : {}", e.to_string());
 
-        let accepted_session = match session_request {
-            Ok(session_request) => {
-                let client = Conn::<Server>::new(session_request, self.sender_fn.unwrap());
-                Ok(client)
-            }
-            Err(e) => {
-                //TODO(hironichu): Map this code to an error in Typescript
-                Err(e)
-            }
-        };
-        match accepted_session {
-            Ok(mut sess) => match sess.accept().await {
-                Ok(conn) => {
-                    sess.accepted(conn);
-                    let client_ptr = Box::into_raw(Box::new(sess));
-                    Ok(client_ptr)
+                            Err(0)
+                        }
+                    },
+                    Err(error) => {
+                        println!("Error accepting session : {}", error.to_string());
+                        Err(0)
+                    }
                 }
-                Err(e) => {
-                    println!("Error accepting connection : {}", e.to_string());
-                    //TODO(hironichu): Map this code to an error in Typescript
-                    Err(0)
-                }
-            },
-            _ => {
-                println!("Error accepting session");
-                //TODO(hironichu): Map this code to an error in Typescript
-                Err(0)
+            }
+            None => {
+                println!("Server endpoint is None (should be closed by now and not be called..");
+                return Err(0);
             }
         }
     }
@@ -153,8 +155,13 @@ pub unsafe extern "C" fn proc_server_close(server_ptr: *mut WebTransportServer) 
 
     let server = &mut *server_ptr;
     server.state = Some(false);
-    let endpoint = server.server.as_mut().unwrap();
-    endpoint.close(20, b"closed");
+    let endpoint = server.server.as_mut();
+    match endpoint {
+        Some(endpoint) => RUNTIME.block_on(async move {
+            endpoint.wait_idle().await;
+        }),
+        None => println!("Error closing server"),
+    }
     0
 }
 

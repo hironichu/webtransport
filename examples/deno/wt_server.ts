@@ -25,7 +25,8 @@ const server = new WebTransportServer("https://localhost:4433", {
     keepAlive: 3,
 });
 
-server.listen();
+await server.ready;
+
 console.log("Server listening");
 server.on("connection", (conn) => {
     console.log("New client");

@@ -42,14 +42,14 @@ Deno.test(
             maxTimeout: 10,
             keepAlive: 3,
         });
-        server.listen();
+        await server.listen();
 
         const client = new WebTransport("https://localhost:4433", {
             maxTimeout: 50,
             keepAlive: 3,
         });
         await client.ready;
-        server.on("connection", async (_) => {
+        server.on("connection", (_) => {
             setTimeout(async () => {
                 await client.closed;
             }, 2000);

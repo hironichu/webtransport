@@ -128,8 +128,9 @@ export class WebTransport {
         const data = new TextDecoder().decode(pointer);
         if (code >= 130) {
             // await Promise.race([this.closed]);
-            await this.closed;
-            throw new Error(data);
+            console.log("We should close the connection");
+            console.log(data);
+            // throw new Error(data);
         }
         const _event = new MessageEvent("error", {
             data,

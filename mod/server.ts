@@ -142,18 +142,15 @@ export class WebTransportServer extends EventEmitter<WebTransportServerEvents> {
         this.emit("event", event);
     }
 
-    close() {
+    async close() {
         this.#NOTIFY_PTR.unref();
         this.#CONNECTION_CB.unref();
 
-        if (this.#SRV_PTR) {
-            // await window.WTLIB.symbols.proc_server_close(this.#SRV_PTR);
-        }
         this.emit("close", new CloseEvent("close"));
         //free all the connections
-        this.connections.forEach((conn, id) => {
+        this.connections.forEach(async (conn, id) => {
             if (conn.state != "closed") {
-                window.WTLIB.symbols.proc_client_close(
+                await window.WTLIB.symbols.proc_client_close(
                     this.#SRV_PTR!,
                     conn.pointer,
                 );
@@ -161,19 +158,22 @@ export class WebTransportServer extends EventEmitter<WebTransportServerEvents> {
             window.WTLIB.symbols.free_conn(conn.pointer);
             this.connections.delete(id);
         });
+        if (this.#SRV_PTR) {
+            window.WTLIB.symbols.proc_server_close(this.#SRV_PTR);
+            window.WTLIB.symbols.free_server(this.#SRV_PTR!);
+            this.#NOTIFY_PTR.close();
+            this.#CONNECTION_CB.close();
+        }
 
-        window.WTLIB.symbols.free_server(this.#SRV_PTR!);
-        this.#NOTIFY_PTR.close();
-        this.#CONNECTION_CB.close();
         this.#SRV_PTR = undefined;
+        console.log("Server closed");
         return;
     }
-    public async listen() {
-        await window.WTLIB.symbols.proc_server_listen(
+    get ready() {
+        return window.WTLIB.symbols.proc_server_listen(
             this.#SRV_PTR!,
             this.#CONNECTION_CB.pointer,
         );
-        return this;
     }
     private checkArgs(_options: WebTransportServerOptions) {
         if (

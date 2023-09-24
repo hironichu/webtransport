@@ -52,7 +52,6 @@ export const symbols = {
     proc_server_close: {
         parameters: ["pointer"],
         result: "usize",
-        nonblocking: true,
     },
     // Client symbols
     proc_client_init: {
@@ -72,7 +71,6 @@ export const symbols = {
     proc_client_close: {
         parameters: ["pointer", "pointer"],
         result: "void",
-        nonblocking: true,
     },
     // Shared symbols
     proc_recv_datagram: {

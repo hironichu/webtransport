@@ -17,7 +17,6 @@ pub struct Conn<Side: std::marker::Send> {
     pub conn: Option<Connection>,
     pub accepted_session: Option<SessionRequest>,
     pub buffer: Option<&'static mut [u8]>,
-    pub cb: extern "C" fn(u32, *mut u8, u32),
     _marker: PhantomData<Side>,
 }
 
@@ -105,16 +104,12 @@ impl<Side: std::marker::Send> Conn<Side> {
 }
 
 impl Conn<Server> {
-    pub(crate) fn new(
-        accepted_session: SessionRequest,
-        cb: extern "C" fn(u32, *mut u8, u32),
-    ) -> Self {
+    pub(crate) fn new(accepted_session: SessionRequest) -> Self {
         Self {
             conn: None,
             accepted_session: Some(accepted_session),
             buffer: None,
             _marker: PhantomData,
-            cb,
         }
     }
     pub fn accepted(&mut self, conn: Connection) {
@@ -136,12 +131,11 @@ impl Conn<Server> {
 }
 
 impl Conn<Client> {
-    pub(crate) fn new(conn: Connection, cb: extern "C" fn(u32, *mut u8, u32)) -> Self {
+    pub(crate) fn new(conn: Connection) -> Self {
         Self {
             conn: Some(conn),
             accepted_session: None,
             buffer: None,
-            cb,
             _marker: PhantomData,
         }
     }
