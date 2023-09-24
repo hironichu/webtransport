@@ -8,7 +8,7 @@ import {
     type WebTransportServerOptions,
     WebTransportServerOptions as ServerOpts,
 } from "./interface.ts";
-import { decoder, encodeBuf } from "./utils.ts";
+import { encodeBuf } from "./utils.ts";
 
 export type WebTransportServerEvents = {
     listening: [Event];
