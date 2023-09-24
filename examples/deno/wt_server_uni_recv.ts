@@ -18,11 +18,15 @@ try {
     Deno.exit(1);
 }
 Deno.serve(() => new Response("Welcome to Deno 🦕"));
+const client = new WebTransport("https://localhost:4433", {
+    maxTimeout: 5,
+    keepAlive: 0,
+});
 const server = new WebTransportServer("https://localhost:4433", {
     certFile: "./certs/localhost.crt",
     keyFile: "./certs/localhost.key",
     maxTimeout: 10,
-    keepAlive: 3,
+    keepAlive: 0,
 });
 server.on("listening", () => {
     console.log("Server listening");
@@ -31,13 +35,16 @@ server.on("listening", () => {
 server.on("connection", async (transport) => {
     console.log("New client");
 
-    const stream = transport.incomingUnidirectionalStreams;
-    const reader = stream.getReader();
-    const first = await reader.read();
+    const streams = transport.incomingUnidirectionalStreams;
+    const reader = streams.getReader();
+    const firststream = await reader.read();
+    const _incoming = firststream.value!;
+    // for await (const data of incoming) {
+    //     console.log(data);
+    // }
 });
 
 await server.ready;
 //after 5 seconds call closed on client
 
-const client = new WebTransport("https://localhost:4433");
 await client.ready;

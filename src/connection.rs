@@ -96,13 +96,8 @@ impl<Side: std::marker::Send> Conn<Side> {
         };
         let conn = self.conn.as_ref();
         match conn {
-            Some(conn) => {
-                conn.close(VarInt::from_u32(code), reason);
-                drop(self.conn.take())
-            }
-            None => {
-                println!("Connection is None");
-            }
+            Some(conn) => conn.close(VarInt::from_u32(code), reason),
+            None => println!("Connection is None"),
         }
     }
 }
@@ -116,19 +111,24 @@ impl Conn<Server> {
             _marker: PhantomData,
         }
     }
+
     pub fn accepted(&mut self, conn: Connection) {
         self.conn = Some(conn);
     }
+
     pub async fn accept(&mut self) -> Result<Connection, wtransport::error::ConnectionError> {
         let accepted_session = self.accepted_session.take().unwrap();
         accepted_session.accept().await
     }
+
     pub fn path(&self) -> &str {
         self.accepted_session.as_ref().unwrap().path()
     }
+
     pub fn authority(&self) -> &str {
         self.accepted_session.as_ref().unwrap().authority()
     }
+
     pub fn headers(&self) -> &HashMap<String, String> {
         self.accepted_session.as_ref().unwrap().headers()
     }

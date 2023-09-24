@@ -212,14 +212,14 @@ pub unsafe extern "C" fn proc_accept_bi(
 pub unsafe extern "C" fn proc_write(
     stream_ptr: *mut BidiStreams,
     buf: *const u8,
-    buflen: u32,
+    buflen: usize,
     errorcb: extern "C" fn(u32, *mut u8, u32),
 ) -> usize {
     assert!(!stream_ptr.is_null());
     assert!(buflen > 0);
 
     let bidi_streams = &mut *stream_ptr;
-    let buf = ::std::slice::from_raw_parts(buf, buflen as usize);
+    let buf = ::std::slice::from_raw_parts(buf, buflen);
     let writer = bidi_streams.send.as_mut().unwrap();
     let writenlen = RUNTIME.block_on(async move {
         match writer.write(buf).await {
@@ -239,13 +239,13 @@ pub unsafe extern "C" fn proc_write(
 pub unsafe extern "C" fn proc_write_all(
     stream_ptr: *mut BidiStreams,
     buf: *const u8,
-    buflen: u32,
+    buflen: usize,
     errorcb: extern "C" fn(u32, *mut u8, u32),
-) -> u32 {
+) -> usize {
     assert!(!stream_ptr.is_null());
     assert!(buflen > 0);
     let stream = &mut *stream_ptr;
-    let buf = ::std::slice::from_raw_parts(buf, buflen as usize);
+    let buf = ::std::slice::from_raw_parts(buf, buflen);
     let writer = stream.send.as_mut().unwrap();
     let writenlen = RUNTIME.block_on(async move {
         match writer.write_all(buf).await {
@@ -269,14 +269,14 @@ pub unsafe extern "C" fn proc_write_all(
 pub unsafe extern "C" fn proc_read(
     stream_ptr: *mut BidiStreams,
     buf: *mut u8,
-    buflen: u32,
+    buflen: usize,
     errorcb: extern "C" fn(u32, *mut u8, u32),
 ) -> usize {
     assert!(!stream_ptr.is_null());
     assert!(buflen > 0);
 
     let stream = &mut *stream_ptr;
-    let buf = ::std::slice::from_raw_parts_mut(buf, buflen as usize);
+    let buf = ::std::slice::from_raw_parts_mut(buf, buflen);
     let readlen = RUNTIME.block_on(async move {
         match stream.recv.as_mut().unwrap().read(buf).await {
             Ok(len) => len,

@@ -90,7 +90,7 @@ export class WebTransportServer extends EventEmitter<WebTransportServerEvents> {
      * @description This function is called when a new connection is received from the server
      */
     private connection(client: Deno.PointerValue<unknown>) {
-        const SHARED_BUF = new SharedArrayBuffer(65536);
+        const SHARED_BUF = new ArrayBuffer(65536);
         const CONN_BUFFER = new Uint8Array(SHARED_BUF);
         // window.WTLIB.symbols.proc_init_datagrams(
         //     client,
@@ -147,6 +147,7 @@ export class WebTransportServer extends EventEmitter<WebTransportServerEvents> {
     }
 
     close() {
+        console.info("[JS] SERVER CLOSE CALLED");
         //free all the connections
         this.connections.forEach((conn, id) => {
             if (conn.state != "closed" && this.#SRV_PTR && conn.pointer) {

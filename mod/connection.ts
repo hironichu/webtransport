@@ -8,10 +8,10 @@ import {
 } from "./streams.ts";
 
 ///
-interface WebTransportSendStreamOptions {
+export interface WebTransportSendStreamOptions {
     sendOrder?: number | null;
 }
-interface WebTransportCloseInfo {
+export interface WebTransportCloseInfo {
     errorCode?: number;
     reason?: string;
 }
@@ -24,21 +24,18 @@ export default class WebTransportConnection {
         | "failed"
         | "connecting" = "closed" as const;
 
-    public readonly datagrams: WebTransportDatagramDuplexStream;
-    // public readonly incomingBidirectionalStreams: ReadableStream<
-    //     WebTransportBidirectionalStream
-    // >;
-    // public readonly incomingUnidirectionalStreams: ReadableStream<
-    //     ReadableStream<Uint8Array>
-    // >;
-
     constructor(
         public readonly pointer: Deno.PointerValue<unknown>,
-        buffer: Uint8Array,
+        private readonly buffer: Uint8Array,
     ) {
         this.state = "connected";
-        // this.#CONN_PTR = pointer;
-        this.datagrams = new WebTransportDatagramDuplexStream(this, buffer);
+    }
+    get datagrams() {
+        return new WebTransportDatagramDuplexStream(
+            this.pointer,
+            this.buffer,
+            this.error.pointer,
+        );
     }
     get incomingBidirectionalStreams() {
         const pointer = this.pointer;
@@ -68,6 +65,7 @@ export default class WebTransportConnection {
                     controller.enqueue(
                         new WebTransportBidirectionalStream(
                             stream,
+                            errorPTR,
                         ),
                     );
                 } catch (e) {
@@ -106,6 +104,8 @@ export default class WebTransportConnection {
                     }
                     controller.enqueue(WebTransportReceiveStream.from(
                         stream,
+                        undefined,
+                        errorPTR,
                     ));
                 } catch (e) {
                     controller.error(e);
@@ -130,7 +130,10 @@ export default class WebTransportConnection {
         if (!_streams || _streams === null) {
             throw new Error("Failed to create bi stream");
         }
-        return new WebTransportBidirectionalStream(_streams);
+        return new WebTransportBidirectionalStream(
+            _streams,
+            this.error.pointer,
+        );
     }
 
     public async createUnidirectionalStream(
@@ -148,15 +151,19 @@ export default class WebTransportConnection {
         if (!_streams || _streams === null) {
             throw new Error("Failed to create uni stream");
         }
-        const stream = WebTransportSendStream.from(_streams);
+        const stream = WebTransportSendStream.from(
+            _streams,
+            this.error.pointer,
+        );
 
         return stream;
     }
 
-    private error = new Deno.UnsafeCallback({
-        parameters: ["pointer"],
+    error = new Deno.UnsafeCallback({
+        parameters: ["u32", "buffer", "u32"],
         result: "void",
-    }, (_pointer) => {
+    }, (code, _pointer, _buflen) => {
+        console.log("CB CALLED : ", code);
     });
     close(_closeInfo?: WebTransportCloseInfo) {
         if (!this.pointer || this.pointer === null) {

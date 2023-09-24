@@ -1,36 +1,25 @@
 if (import.meta.main) {
     throw new Error("This module is not meant to be imported.");
 }
-import WebTransportConnection from "./connection.ts";
-import { WebTransportDatagramDuplexStream } from "./streams.ts";
+import { WebTransportSendStreamOptions } from "./connection.ts";
+import {
+    WebTransportBidirectionalStream,
+    WebTransportDatagramDuplexStream,
+    WebTransportReceiveStream,
+    WebTransportSendStream,
+} from "./streams.ts";
 import {
     type WebTransportOptions,
     WebTransportOptions as ServerOpts,
 } from "./interface.ts";
-import { decoder, encodeBuf } from "./utils.ts";
+import { encodeBuf } from "./utils.ts";
 
 export class WebTransport {
-    #CONN_PTR: Deno.PointerValue<unknown> | undefined;
-    // #NOTIFY_PTR = new Deno.UnsafeCallback(
-    //     {
-    //         parameters: ["u32", "pointer", "u32"],
-    //         result: "void",
-    //     },
-    //     this.notify.bind(this),
-    // );
+    #CLIENT_PTR: Deno.PointerValue<unknown> | undefined;
 
-    // #CONNECTION_CB = new Deno.UnsafeCallback(
-    //     {
-    //         parameters: ["pointer"],
-    //         result: "void",
-    //     },
-    //     this.connection.bind(this),
-    // );
-    public datagrams!: WebTransportDatagramDuplexStream;
-    // public readonly ready: Promise<WebTransportConnection>;
-
-    public conn?: WebTransportConnection;
+    private conn?: Deno.PointerValue<unknown>;
     protected remote: URL;
+    private buffer!: Uint8Array;
     constructor(
         _client: URL | string,
         _options: WebTransportOptions = ServerOpts,
@@ -40,79 +29,152 @@ export class WebTransport {
             _client = new URL(_client);
         }
 
-        this.#CONN_PTR = window.WTLIB.symbols.proc_client_init(
+        this.#CLIENT_PTR = window.WTLIB.symbols.proc_client_init(
             _options.keepAlive,
             _options.maxTimeout,
         );
 
-        if (!this.#CONN_PTR) {
+        if (!this.#CLIENT_PTR) {
             throw new Error("Failed to initialize client");
         }
-        /// Set the current remote to the client
         this.remote = _client;
-
-        /// ref the callback to prevent it from being garbage collected
-        // this.#NOTIFY_PTR.ref();
-        // this.#CONNECTION_CB.ref();
     }
-    /**
-     * @callback connection
-     * @param {Deno.PointerValue<unknown>} client
-     * @returns {void}
-     * @description This function is called when a new connection is received from the server
-     */
-    private connection(client: Deno.PointerValue<unknown>) {
-        if (!client || client == null) {
-            return;
-        }
-        const CONN_BUFFER = new Uint8Array(65536);
-
-        this.conn = new WebTransportConnection(
-            client,
-            CONN_BUFFER,
-        );
-
-        this.datagrams = new WebTransportDatagramDuplexStream(
-            this.conn,
-            CONN_BUFFER,
-        );
-        return this.conn;
-    }
-    /**
-     * @callback notify
-     * @param {number} code
-     * @param {Deno.PointerValue<unknown>} buffer
-     * @param {number} buflen
-     * @returns {void}
-     *
-     * @description This function is called when a new event is received from the server
-     */
-    private notify(
-        _code: unknown | number,
-        buffer: Deno.PointerValue<unknown>,
-        buflen: number,
-    ) {
-        const code = _code as number;
-        console.log("[CB CLIENT] Got code", code);
-        if (buflen < 0) {
-            return;
-        }
-        const pointer = Deno.UnsafePointerView.getArrayBuffer(
-            buffer!,
-            buflen,
-        );
-        const data = decoder.decode(pointer);
-        if (code >= 130) {
-            // Promise.race([this.closed]);
-            console.error("[CB CLIENT] We should close the connection");
-            console.error(data);
-            // throw new Error(data);
-        }
-        const _event = new MessageEvent("error", {
-            data,
+    get incomingBidirectionalStreams() {
+        const pointer = this.conn;
+        const errorPTR = this.error.pointer;
+        return new ReadableStream<
+            WebTransportBidirectionalStream
+        >({
+            async start(controller) {
+                try {
+                    if (
+                        (!pointer || pointer === null) ||
+                        (!errorPTR || errorPTR === null)
+                    ) {
+                        controller.close();
+                        return;
+                    }
+                    const stream = await window.WTLIB.symbols
+                        .proc_accept_bi(
+                            pointer,
+                            errorPTR,
+                        );
+                    if (!stream || stream === null) {
+                        console.error("[incoming BIDI] Stream not accepted");
+                        controller.close();
+                        return;
+                    }
+                    controller.enqueue(
+                        new WebTransportBidirectionalStream(
+                            stream,
+                            errorPTR,
+                        ),
+                    );
+                } catch (e) {
+                    controller.error(e);
+                }
+            },
+            cancel() {
+                console.info("[incoming BIDI] Cancelled");
+            },
         });
-        dispatchEvent(_event);
     }
+    get incomingUnidirectionalStreams() {
+        const pointer = this.conn!;
+        const errorPTR = this.error.pointer;
+        return new ReadableStream<
+            ReadableStream<Uint8Array>
+        >({
+            async start(controller) {
+                if (
+                    (!pointer || pointer === null) ||
+                    (!errorPTR || errorPTR === null)
+                ) {
+                    controller.close();
+                    return;
+                }
+                try {
+                    const stream = await window.WTLIB.symbols
+                        .proc_accept_uni(
+                            pointer,
+                            errorPTR,
+                        );
+                    if (!stream || stream === null) {
+                        console.error("[incoming UNI] Stream not accepted");
+                        controller.close();
+                        return;
+                    }
+
+                    controller.enqueue(WebTransportReceiveStream.from(
+                        stream,
+                        undefined,
+                        errorPTR,
+                    ));
+                } catch (e) {
+                    controller.error(e);
+                }
+            },
+            cancel() {
+                console.info("[incoming UNI] Cancelled");
+            },
+        });
+    }
+    get datagrams() {
+        return new WebTransportDatagramDuplexStream(
+            this.conn!,
+            this.buffer,
+            this.error.pointer,
+        );
+    }
+
+    public async createBidirectionalStream(
+        _options?: WebTransportSendStreamOptions,
+    ): Promise<WebTransportBidirectionalStream> {
+        if (!this.conn) throw new Error("Connection is closed");
+        if (!this.conn || this.conn === null) {
+            throw new Error("Connection is closed");
+        }
+        const _streams = await window.WTLIB.symbols.proc_open_bi(
+            this.conn,
+            this.error.pointer,
+        );
+        if (!_streams || _streams === null) {
+            throw new Error("Failed to create bi stream");
+        }
+        return new WebTransportBidirectionalStream(
+            _streams,
+            this.error.pointer,
+        );
+    }
+
+    public async createUnidirectionalStream(
+        _options?: WebTransportSendStreamOptions,
+    ): Promise<WritableStream> {
+        if (!this.conn || this.conn === null) {
+            throw new Error("Connection is closed");
+        }
+        //The following operation block the thread until the stream is created.
+        const _streams = await window.WTLIB.symbols.proc_open_uni(
+            this.conn,
+            this.error.pointer,
+        );
+
+        if (!_streams || _streams === null) {
+            throw new Error("Failed to create uni stream");
+        }
+        const stream = WebTransportSendStream.from(
+            _streams,
+            this.error.pointer,
+        );
+
+        return stream;
+    }
+    error = new Deno.UnsafeCallback({
+        parameters: ["u32", "buffer", "u32"],
+        result: "void",
+    }, (code, _pointer, _buflen) => {
+        console.log("CB CALLED : ", code);
+    });
     get closed() {
         return new Promise(() => {
             //close the datagrams
@@ -121,15 +183,15 @@ export class WebTransport {
             }
             //close all the streams
 
-            if (this.#CONN_PTR && this.conn) {
+            if (this.#CLIENT_PTR && this.conn) {
                 window.WTLIB.symbols.proc_client_close(
-                    this.#CONN_PTR,
-                    this.conn!.pointer,
+                    this.#CLIENT_PTR,
+                    this.conn!,
                 );
             }
-            if (this.#CONN_PTR && !this.conn) {
+            if (this.#CLIENT_PTR && !this.conn) {
                 window.WTLIB.symbols.free_client(
-                    this.#CONN_PTR,
+                    this.#CLIENT_PTR,
                 );
             }
             // this.#NOTIFY_PTR.unref();
@@ -139,21 +201,30 @@ export class WebTransport {
         });
     }
     get ready() {
-        return new Promise<WebTransportConnection>((resolve, reject) => {
-            const encoded = encodeBuf(this.remote.href);
-            const conn = window.WTLIB.symbols.proc_client_connect(
-                this.#CONN_PTR!,
-                encoded[0],
-                encoded[1],
-            );
-            this.connection(conn);
-            if (this.conn) {
-                resolve(this.conn);
-            } else {
-                this.conn = undefined;
-                reject("Failed to connect to server");
-            }
-        });
+        return new Promise<WebTransport>(
+            (resolve, reject) => {
+                if (!this.#CLIENT_PTR) {
+                    reject("Client is not initialized");
+                    return;
+                }
+                const encoded = encodeBuf(this.remote.href);
+                window.WTLIB.symbols.proc_client_connect(
+                    this.#CLIENT_PTR,
+                    encoded[0],
+                    encoded[1],
+                ).then((conn) => {
+                    if (!conn || conn === null) {
+                        reject("Failed to connect");
+                        return;
+                    }
+                    this.buffer = new Uint8Array(1024);
+                    this.conn = conn;
+                    resolve(this);
+                }).catch((e) => {
+                    reject(e);
+                });
+            },
+        );
     }
 }
 

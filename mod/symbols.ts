@@ -24,6 +24,19 @@ export const symbols = {
     proc_server_close: {
         parameters: ["pointer"],
         result: "usize",
+        nonblocking: true,
+    },
+    proc_server_client_headers: {
+        parameters: ["pointer", "buffer"],
+        result: "pointer",
+    },
+    proc_server_client_path: {
+        parameters: ["pointer", "buffer"],
+        result: "pointer",
+    },
+    proc_server_client_authority: {
+        parameters: ["pointer", "buffer"],
+        result: "pointer",
     },
     // Client symbols
     proc_client_init: {
@@ -33,17 +46,15 @@ export const symbols = {
             "u64", //MaxTimeout
         ],
         result: "pointer",
-        callback: true,
     },
     proc_client_connect: {
         parameters: [
             "pointer",
-            // "function", //Connection Callback
             "buffer",
             "usize", //HostLen
         ],
         result: "pointer",
-        // callback: true,
+        nonblocking: true,
     },
     proc_client_close: {
         parameters: ["pointer", "pointer"],
@@ -51,14 +62,16 @@ export const symbols = {
     },
     // Shared symbols
     proc_recv_datagram: {
-        parameters: ["pointer", "buffer"],
+        parameters: ["pointer", "buffer", "function"],
         result: "usize",
         nonblocking: true,
+        callback: true,
     },
     proc_send_datagram: {
-        parameters: ["pointer", "buffer", "usize"],
+        parameters: ["pointer", "buffer", "usize", "function"],
         result: "void",
-        nonblocking: false,
+        nonblocking: true,
+        callback: true,
     },
     proc_accept_bi: {
         parameters: [
@@ -67,6 +80,7 @@ export const symbols = {
         ],
         result: "pointer",
         nonblocking: true,
+        callback: true,
     },
     proc_open_bi: {
         parameters: [
@@ -75,6 +89,7 @@ export const symbols = {
         ],
         result: "pointer",
         nonblocking: true,
+        callback: true,
     },
 
     proc_accept_uni: {
@@ -84,6 +99,7 @@ export const symbols = {
         ],
         result: "pointer",
         nonblocking: true,
+        callback: true,
     },
     proc_open_uni: {
         parameters: [
@@ -92,22 +108,26 @@ export const symbols = {
         ],
         result: "pointer",
         nonblocking: true,
+        callback: true,
     },
 
     proc_read: {
-        parameters: ["pointer", "buffer", "u32"],
+        parameters: ["pointer", "buffer", "usize", "function"],
         result: "usize",
         nonblocking: true,
+        callback: true,
     },
     proc_write: {
-        parameters: ["pointer", "buffer", "u32"],
+        parameters: ["pointer", "buffer", "usize", "function"],
         result: "usize",
         nonblocking: true,
+        callback: true,
     },
     proc_write_all: {
-        parameters: ["pointer", "buffer", "u32"],
+        parameters: ["pointer", "buffer", "usize", "function"],
         result: "usize",
         nonblocking: true,
+        callback: true,
     },
     proc_recvstream_id: {
         parameters: ["pointer"],

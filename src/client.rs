@@ -86,14 +86,13 @@ pub extern "C" fn proc_client_init(
 #[no_mangle]
 pub unsafe extern "C" fn proc_client_connect(
     client: *mut WebTransportClient,
-    // cb: Option<extern "C" fn(*mut Conn<Client>)>,
     url: *const u8,
     url_len: usize,
 ) {
     let url = ::std::slice::from_raw_parts(url, url_len);
     let url = std::str::from_utf8(url).unwrap();
     let client = &mut *client;
-    // client.conn_cb = cb;
+
     client.connect(url.to_string());
 }
 
@@ -104,11 +103,10 @@ pub unsafe extern "C" fn proc_client_close(
 ) -> usize {
     assert!(!client_ptr.is_null());
     assert!(!conn.is_null());
-    println!("CALLED");
+    println!("CLIENT CLOSE CALLED");
     let client = &mut *client_ptr;
     let conn = &mut *conn;
     client.state = Some(false);
-    // RUNTIME.block_on(async move { conn.close(32, Some(b"NO")) });
     conn.close(32, Some(b"NO"));
     0
 }
