@@ -82,7 +82,7 @@ export class WebTransportDatagramDuplexStream {
  */
 export class WebTransportBidirectionalStream {
     readonly readable: ReadableStream;
-    readonly writable: WritableStream;
+    readonly writable: WritableStream<Uint8Array>;
 
     constructor(
         public readonly ptr: Deno.PointerValue<unknown>,
@@ -93,6 +93,7 @@ export class WebTransportBidirectionalStream {
             undefined,
             errorCB,
         );
+        console.log(this.ptr);
         this.writable = WebTransportSendStream.from(this.ptr, errorCB);
     }
 }
@@ -110,6 +111,7 @@ export class WebTransportReceiveStream {
         DEFAULT_CHUNK_SIZE = 1024,
         cb: Deno.PointerValue<unknown>,
     ) {
+        console.log("BIDI READER");
         return new ReadableStream({
             type: "bytes",
             start(controller) {
@@ -131,7 +133,6 @@ export class WebTransportReceiveStream {
                             controller.close();
                         }
                         controller.byobRequest.respond(bytesRead as number);
-                        console.log(`byobRequest with ${bytesRead} bytes`);
                     } else {
                         const buffer = new ArrayBuffer(DEFAULT_CHUNK_SIZE);
                         bytesRead = await window.WTLIB.symbols.proc_read(
@@ -147,9 +148,6 @@ export class WebTransportReceiveStream {
                                 new Uint8Array(buffer, 0, bytesRead as number),
                             );
                         }
-                        console.log(
-                            `enqueue() ${bytesRead} bytes (no byobRequest)`,
-                        );
                     }
 
                     if (bytesRead === 0) {
@@ -160,46 +158,7 @@ export class WebTransportReceiveStream {
                     // });
                 }
             },
-            // pull(controller) {
-            //     readRepeatedly().catch((e) => controller.error(e));
-            //     async function readRepeatedly() {
-            //         if (!ptr || ptr === null) {
-            //             throw new Error("Stream is closed");
-            //         }
-            //         let bytesRead;
-            //         if (controller.byobRequest) {
-            //             const v = controller.byobRequest.view;
-            //             bytesRead = await window.WTLIB.symbols.proc_read(
-            //                 ptr,
-            //                 v?.buffer!,
-            //                 v?.byteLength!,
-            //             );
-            //             if (bytesRead === 0) {
-            //                 console.log("BYOB REQUEST");
-            //                 controller.close();
-            //             }
-            //             controller.byobRequest.respond(bytesRead as number);
-            //         } else {
-            //             const buffer = new ArrayBuffer(DEFAULT_CHUNK_SIZE);
-            //             bytesRead = await window.WTLIB.symbols.proc_read(
-            //                 ptr,
-            //                 buffer,
-            //                 DEFAULT_CHUNK_SIZE,
-            //             );
-            //             if (bytesRead === 0) {
-            //                 controller.close();
-            //             } else {
-            //                 controller.enqueue(
-            //                     new Uint8Array(buffer, 0, bytesRead as number),
-            //                 );
-            //             }
-            //         }
-            //         if (bytesRead === 0) {
-            //             return;
-            //         }
-            //         return readRepeatedly();
-            //     }
-            // },
+
             async cancel(reason?: string): Promise<void> {
                 if (!ptr || ptr === null) {
                     console.debug("Stream is closed");
@@ -235,19 +194,15 @@ export class WebTransportSendStream {
                     controller.error("Stream is closed");
                     return;
                 }
-                try {
-                    written = await window.WTLIB.symbols.proc_write_all(
-                        ptr,
-                        chunk,
-                        chunk.byteLength,
-                        cb,
-                    ) as number;
-                    if (written === 0) {
-                        controller.error("Write failed");
-                        return;
-                    }
-                } catch (e) {
-                    console.error(e);
+
+                written = await window.WTLIB.symbols.proc_write(
+                    ptr,
+                    chunk,
+                    chunk.byteLength,
+                    cb,
+                ) as number;
+                if (written === 0) {
+                    controller.error("Write failed");
                     return;
                 }
             },

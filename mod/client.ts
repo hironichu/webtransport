@@ -172,8 +172,11 @@ export class WebTransport {
     error = new Deno.UnsafeCallback({
         parameters: ["u32", "buffer", "u32"],
         result: "void",
-    }, (code, _pointer, _buflen) => {
-        console.log("CB CALLED : ", code);
+    }, async (code, _pointer, _buflen) => {
+        if (code === 154) {
+            console.log("Timed out, closing connection");
+            await this.closed;
+        }
     });
     get closed() {
         return new Promise(() => {

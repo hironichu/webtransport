@@ -108,9 +108,9 @@ export class WebTransportServer extends EventEmitter<WebTransportServerEvents> {
         }
         this.connections.forEach((conn, id) => {
             if (conn.state != "closed" && conn.pointer) {
-                // window.WTLIB.symbols.proc_client_close(
-                //     conn.pointer,
-                // );
+                window.WTLIB.symbols.proc_client_close(
+                    conn.pointer,
+                );
                 window.WTLIB.symbols.free_conn(conn.pointer);
                 conn.state = "closed";
             }

@@ -7,7 +7,8 @@
         "demo:server": "deno run -A --unstable ./examples/deno/wt_server.ts",
         "demo:server-uni-recv": "deno run -A --unstable ./examples/deno/wt_server_uni_recv.ts",
         "demo:server-uni-send": "deno run -A --unstable ./examples/deno/wt_server_uni_send.ts",
-        "demo:server-bidi": "deno run -A --unstable ./examples/deno/wt_server_bidi.ts",
+        "demo:server-bidi-send": "deno run -A --unstable ./examples/deno/wt_server_bidi_send.ts",
+        "demo:server-bidi-recv": "deno run -A --unstable ./examples/deno/wt_server_bidi_recv.ts",
         "demo:client": "deno run -A --unstable ./examples/deno/wt_client.ts",
         "demo:bidi": "deno run -A --unstable ./examples/deno/wt_client_bidi.ts",
         "demo:uni-send": "deno run -A --unstable ./examples/deno/wt_client_uni_send.ts",
@@ -37,5 +38,13 @@
         ],
         "lineWidth": 80,
         "indentWidth": 4
+    },
+    "lint": {
+        "exclude": [
+            "./target",
+            "./.git",
+            "./.github",
+            "./.vscode"
+        ]
     }
 }

@@ -99,9 +99,9 @@ pub unsafe extern "C" fn proc_client_connect(
 #[no_mangle]
 pub unsafe extern "C" fn proc_client_close(conn: *mut Conn<Client>) -> usize {
     assert!(!conn.is_null());
-    println!("CLIENT CLOSE CALLED");
+
     let conn = &mut *conn;
-    conn.close(32, Some(b"NO"));
+    conn.close(30, Some(b"Closed by client"));
     0
 }
 

@@ -58,7 +58,9 @@ export default class WebTransportConnection {
                             errorPTR,
                         );
                     if (!stream || stream === null) {
-                        console.error("[incoming BIDI] Stream not accepted");
+                        console.error(
+                            "[incoming BIDI] Stream not accepted",
+                        );
                         controller.close();
                         return;
                     }
@@ -163,7 +165,9 @@ export default class WebTransportConnection {
         parameters: ["u32", "buffer", "u32"],
         result: "void",
     }, (code, _pointer, _buflen) => {
-        console.log("CB CALLED : ", code);
+        if (code === 154) {
+            this.close();
+        }
     });
     close(_closeInfo?: WebTransportCloseInfo) {
         if (!this.pointer || this.pointer === null) {

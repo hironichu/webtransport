@@ -25,15 +25,29 @@ const server = new WebTransportServer("https://localhost:4433", {
     keepAlive: 3,
 });
 
-server.listen();
+await server.ready;
 console.log("Server listening");
+const decoder = new TextDecoder();
+const stdin = Deno.stdin.readable;
 server.on("connection", async (conn) => {
+    console.log("New connection");
     const bidiStream = await conn.createBidirectionalStream();
-    const writer = bidiStream.writable.getWriter();
-    writer.write(new Uint8Array([1, 2, 3, 4, 5]));
-    writer.write(new Uint8Array([1, 2, 3, 4, 5]));
-    writer.write(new Uint8Array([1, 2, 3, 4, 5]));
-    for await (const reads of bidiStream.readable) {
-        console.log(reads);
-    }
+    await Promise.all([
+        (async () => {
+            for await (const data of bidiStream!.readable) {
+                const decoded = decoder.decode(data).trim().replaceAll(
+                    "\t",
+                    " ",
+                );
+                if (decoded.trim() === "exit") {
+                    console.log("Closing server");
+                    await server.close();
+                }
+                console.log("Recevied : ", decoded);
+            }
+        })(),
+        (() => {
+            stdin.pipeTo(bidiStream!.writable);
+        })(),
+    ]);
 });
