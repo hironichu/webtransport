@@ -210,7 +210,7 @@ pub unsafe extern "C" fn proc_server_close(server_ptr: *mut WebTransportServer) 
 #[no_mangle]
 pub unsafe extern "C" fn proc_server_close_clients(server_ptr: *mut WebTransportServer) -> usize {
     assert!(!server_ptr.is_null());
-    println!("CLIENT CLOSE CALLED");
+    println!("SERVER CLIENTS CLOSE CALLED");
     let server = &mut *server_ptr;
     server.state = Some(false);
     let endpoint = server.server.as_mut();

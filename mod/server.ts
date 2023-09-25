@@ -99,6 +99,13 @@ export class WebTransportServer extends EventEmitter<WebTransportServerEvents> {
     async close() {
         console.info("[JS] SERVER CLOSE CALLED");
         //free all the connections
+        if (this.#SRV_PTR) {
+            if (this.connections.size > 0) {
+                await window.WTLIB.symbols.proc_server_close_clients(
+                    this.#SRV_PTR,
+                );
+            }
+        }
         this.connections.forEach((conn, id) => {
             if (conn.state != "closed" && conn.pointer) {
                 // window.WTLIB.symbols.proc_client_close(
@@ -109,12 +116,15 @@ export class WebTransportServer extends EventEmitter<WebTransportServerEvents> {
             }
             this.connections.delete(id);
         });
-        if (this.#SRV_PTR) {
-            await window.WTLIB.symbols.proc_server_close_clients(this.#SRV_PTR);
-            window.WTLIB.symbols.proc_server_close(this.#SRV_PTR);
-            window.WTLIB.symbols.free_server(this.#SRV_PTR);
-        }
+
         this.#CONNECTION_CB.close();
+        await new Promise((r) => {
+            setTimeout(() => {
+                window.WTLIB.symbols.proc_server_close(this.#SRV_PTR!);
+                r(true);
+            }, 100);
+        });
+        window.WTLIB.symbols.free_server(this.#SRV_PTR!);
         this.#SRV_PTR = undefined;
         console.info("[SERVER] Server closed");
     }
