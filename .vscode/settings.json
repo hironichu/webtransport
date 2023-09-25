@@ -1,5 +1,9 @@
 {
-    "deno.enable": true,
-    "deno.lint": true,
-    "deno.unstable": true
+  "deno.enable": true,
+  "deno.lint": true,
+  "deno.unstable": true,
+  "editor.formatOnSave": true,
+  "rust-analyzer.linkedProjects": [
+    ".\\Cargo.toml"
+  ]
 }

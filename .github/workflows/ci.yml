@@ -1,0 +1,206 @@
+on:
+  pull_request:
+    types: [review_requested, opened]
+    branches:    
+      - 'releases/**'
+  push:
+    branches:    
+      - 'main'
+      - 'releases/**'
+      - 'testing/**'
+      - 'feat/**'
+      - 'fix/**'
+      - 'dev/**'
+concurrency:
+  group: ${{ github.workflow }}-${{ !contains(github.event.pull_request.labels.*.name, 'test-flaky-ci') && github.head_ref || github.run_id }}
+  cancel-in-progress: true
+
+name: Webtransport CI
+jobs:
+  build:
+    if: |
+      github.event_name == 'push' || !startsWith(github.event.pull_request.head.label, 'hironichu:')
+    strategy:
+      matrix:
+        os: [ 'ubuntu-latest', 'self-hosted', "macos-latest", "windows-latest"]
+        job: [build]
+        profile: [debug, release]
+        include:
+          - os: 'ubuntu-latest'
+            job: lint
+            profile: debug
+
+    name: ${{ matrix.job }} ${{ matrix.profile }} ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    env:
+      CARGO_TERM_COLOR: always
+      RUST_BACKTRACE: full
+    steps:
+      - name: Clone repository
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 2
+      - name: Create source tarballs (release, linux)
+        if: |
+          startsWith(matrix.os, 'ubuntu') &&
+          matrix.profile == 'release' &&
+          matrix.job == 'build' &&
+          github.repository == 'hironichu/webtransport' &&
+          startsWith(github.ref, 'refs/tags/')
+        run: |
+          mkdir -p target/release
+          tar --exclude=".git*" --exclude=target --exclude=third_party/prebuilt \
+              -czvf target/release/webtransport.tar.gz -C .. webtransport
+
+      - name: Setting Up Rust
+        uses: dtolnay/rust-toolchain@master
+        if: |
+          matrix.job != 'lint'
+        with:
+          toolchain: stable
+      - name: Install Deno from .land
+        if: matrix.os != 'self-hosted'
+        uses: denoland/setup-deno@v1
+        with:
+          deno-version: v1.x
+
+      - name: Install Deno from source
+        if: matrix.os == 'self-hosted'
+        run: |
+          echo "Check if Deno is already installed"
+          if ! type deno > /dev/null; then
+            echo "Deno is not installed, installing..."
+            curl -s https://gist.githubusercontent.com/LukeChannings/09d53f5c364391042186518c8598b85e/raw/ac8cd8c675b985edd4b3e16df63ffef14d1f0e24/deno_install.sh | sh
+          else
+            echo "Deno is already installed"
+          fi
+      - name: Error on warning
+        run: echo "RUSTFLAGS=-D warnings" >> $GITHUB_ENV
+
+      - name: Deno Format
+        if: matrix.job == 'lint'
+        run: deno task util:fmt
+
+      - name: Deno lint
+        if: matrix.job == 'lint'
+        run: deno task util:lint
+
+      - name: Build Debug
+        if: |
+          (matrix.job == 'build' && matrix.profile == 'debug')
+        run: deno task build:${{matrix.profile}}
+
+      - name: Build release
+        if: |
+          (matrix.job == 'build' && matrix.profile == 'release') &&
+          (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/'))
+        run: deno task build:${{matrix.profile}}
+
+      - name: Move arm file (release)
+        if: startsWith(matrix.os, 'self-hosted') && matrix.job == 'build' && matrix.profile == 'release' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/'))
+        run: |
+          mv target/${{matrix.profile}}/libwebtransport.so target/${{matrix.profile}}/libwebtransport_aarch64.so
+
+      - name: Move arm file (debug)
+        if: startsWith(matrix.os, 'self-hosted') && matrix.job == 'build' && matrix.profile == 'debug' 
+        run: |
+          mv target/${{matrix.profile}}/libwebtransport.so target/${{matrix.profile}}/libwebtransport_aarch64.so
+      - name: Upload artifact (release)
+        uses: actions/upload-artifact@master
+        if: |
+          (matrix.job == 'build' && matrix.profile == 'release') &&
+          ((github.ref == 'refs/heads/main' && !startsWith(github.ref, 'refs/tags/')))
+        with:
+            name: release
+            path: |
+                target/${{matrix.profile}}/webtransport.dll
+                target/${{matrix.profile}}/libwebtransport.so
+                target/${{matrix.profile}}/libwebtransport_aarch64.so
+                target/${{matrix.profile}}/libwebtransport.dylib
+      - name: Upload artifact (debug)
+        uses: actions/upload-artifact@master
+        if: |
+            matrix.job == 'build' && matrix.profile == 'debug' && !startsWith(github.ref, 'refs/tags/')
+        with:
+            name: debug
+            path: |
+                target/${{matrix.profile}}/webtransport.dll
+                target/${{matrix.profile}}/libwebtransport.so
+                target/${{matrix.profile}}/libwebtransport_aarch64.so
+                target/${{matrix.profile}}/libwebtransport.dylib
+      - name: Upload release to GitHub
+        uses: softprops/action-gh-release@59c3b4891632ff9a897f99a91d7bc557467a3a22
+        if: |
+          (matrix.job == 'build' && matrix.profile == 'release') &&
+          github.repository == 'hironichu/webtransport' &&
+          github.ref == 'refs/heads/main'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          files: |
+            target/${{matrix.profile}}/webtransport.dll
+            target/${{matrix.profile}}/libwebtransport.so
+            target/${{matrix.profile}}/libwebtransport_aarch64.so
+            target/${{matrix.profile}}/libwebtransport.dylib
+          draft: true
+  test:
+    needs: build
+    if: |
+      github.event_name == 'push' || !startsWith(github.event.pull_request.head.label, 'hironichu:')
+    strategy:
+      matrix:
+        os: ['ubuntu-latest', 'self-hosted', "macos-latest", "windows-latest"]
+        job: [test]
+        profile: [debug, release]
+    name: ${{ matrix.job }} ${{ matrix.profile }} ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 5
+
+    steps:
+      - uses: actions/checkout@master
+      - name: Creating target structure
+        run: |
+          mkdir -p target
+
+      - name: Download artifact
+        uses: actions/download-artifact@master
+        with:
+            path: target
+
+      - name: Display structure of downloaded files
+        run: ls -R
+      - name: Install Deno from .land
+        if: matrix.os != 'self-hosted'
+        uses: denoland/setup-deno@v1
+        with:
+          deno-version: v1.x
+
+      - name: Install Deno from source
+        if: matrix.os == 'self-hosted'
+        run: |
+          echo "Check if Deno is already installed"
+          if ! type deno > /dev/null; then
+            echo "Deno is not installed, installing..."
+            curl -s https://gist.githubusercontent.com/LukeChannings/09d53f5c364391042186518c8598b85e/raw/ac8cd8c675b985edd4b3e16df63ffef14d1f0e24/deno_install.sh | sh
+          else
+            echo "Deno is already installed"
+          fi
+      - name: Run deno test (debug)
+        if: |
+          matrix.job == 'test' && matrix.profile == 'debug' && !startsWith(github.ref, 'refs/tags/')
+        env:
+            BUILD_TARGET: debug
+            CI_BUILD: true
+        run: |
+          deno task test
+
+      - name: Run deno test (release)
+        if: |
+          (matrix.job == 'test' && matrix.profile == 'release') &&
+          ((github.ref == 'refs/heads/main' && !startsWith(github.ref, 'refs/tags/')))
+        env:
+            BUILD_TARGET: release
+            CI_BUILD: true
+        run: |
+          deno task test

@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>DEMO WEBTRANSPORT</title>
+	<style>
+		body {
+			background-color: #1d1d1e;
+			color: #fff;
+			font-family: monospace;
+		}
+
+		h1 {
+			text-align: center;
+		}
+
+		h2 {
+			text-align: center;
+		}
+	</style>
+</head>
+
+<body>
+	<h1>DEMO WEBTRANSPORT</h1>
+	<h2>Server IP : HOST_IP</h2>
+	<!-- TBA Stats -->
+	<script type="module">
+		const decoder = new TextDecoder();
+
+		window.transport = new WebTransport('https://HOST_IP:4433/', {
+			congestionControl: "throughput",
+			allowPooling: true,
+			serverCertificateHashes: [{
+				algorithm: "sha-256",
+				value: new Uint8Array(CERT_HASH)
+			}]
+		})
+		await window.transport.ready;
+
+		console.log(window.transport)
+		window.transport.onstatechange = (event) => {
+			console.log("EVENT : ", event);
+		}
+		// let incomignUNi = await window.transport.incomingUnidirectionalStreams
+		// for await (const stream of incomignUNi) {
+		// 	console.log("INCOMING UNI : ", stream)
+		// 	stream.readableStreamClosed.then(() => {
+		// 		console.log("INCOMING UNI CLOSED")
+		// 	})
+		// 	let reader = stream.readable.getReader()
+		// 	while (true) {
+		// 		let {
+		// 			done,
+		// 			value
+		// 		} = await reader.read()
+		// 		if (done) {m
+		// 			break
+		// 		}
+		// 		console.log("INCOMING UNI DATA : ", decoder.decode(value))
+		// 	}
+		// }
+	</script>
+</body>
+
+</html>
