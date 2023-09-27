@@ -5,7 +5,14 @@
         //Examples
         "demo:web": "deno run -A ./examples/web_server/web.js",
         "demo:server": "deno run -A --unstable ./examples/deno/wt_server.ts",
+        "demo:server-uni-recv": "deno run -A --unstable ./examples/deno/wt_server_uni_recv.ts",
+        "demo:server-uni-send": "deno run -A --unstable ./examples/deno/wt_server_uni_send.ts",
+        "demo:server-bidi-send": "deno run -A --unstable ./examples/deno/wt_server_bidi_send.ts",
+        "demo:server-bidi-recv": "deno run -A --unstable ./examples/deno/wt_server_bidi_recv.ts",
         "demo:client": "deno run -A --unstable ./examples/deno/wt_client.ts",
+        "demo:bidi": "deno run -A --unstable ./examples/deno/wt_client_bidi.ts",
+        "demo:uni-send": "deno run -A --unstable ./examples/deno/wt_client_uni_send.ts",
+        "demo:uni-recv": "deno run -A --unstable ./examples/deno/wt_client_uni_recv.ts",
         "demo:gencert": "deno run -A --unstable ./examples/deno/wt_gencert.ts",
         // CI Build task
         "build:release": "cargo clean && cargo build --release",
@@ -14,7 +21,7 @@
         "util:fmt": "deno fmt --unstable",
         "util:lint": "deno lint --unstable",
         //Tests
-        "test": "deno test -A --unstable ",
+        "test": "deno task demo:gencert && deno test -A --unstable ",
         //Non CI build
         "build": "cargo build"
     },
@@ -31,5 +38,13 @@
         ],
         "lineWidth": 80,
         "indentWidth": 4
+    },
+    "lint": {
+        "exclude": [
+            "./target",
+            "./.git",
+            "./.github",
+            "./.vscode"
+        ]
     }
 }

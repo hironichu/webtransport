@@ -24,14 +24,6 @@ export class WebTransportServer extends EventEmitter<WebTransportServerEvents> {
     public connections: Map<number, WebTransportConnection> = new Map();
     #SRV_PTR: Deno.PointerValue<unknown> | undefined;
 
-    #STATE_PTR = new Uint32Array(1);
-    #NOTIFY_PTR = new Deno.UnsafeCallback(
-        {
-            parameters: ["u32", "pointer", "u32"],
-            result: "void",
-        },
-        this.notify.bind(this),
-    );
     #CONNECTION_CB = new Deno.UnsafeCallback(
         {
             parameters: ["pointer"],
@@ -65,7 +57,6 @@ export class WebTransportServer extends EventEmitter<WebTransportServerEvents> {
         const keybuf = encodeBuf(key);
 
         this.#SRV_PTR = window.WTLIB.symbols.proc_server_init(
-            this.#NOTIFY_PTR.pointer,
             parseInt(_url.port),
             true,
             _options.keepAlive,
@@ -80,7 +71,6 @@ export class WebTransportServer extends EventEmitter<WebTransportServerEvents> {
             throw new Error("Failed to initialize server");
         }
 
-        this.#NOTIFY_PTR.ref();
         this.#CONNECTION_CB.ref();
         this.emit("listening", new Event("listening"));
     }
@@ -91,14 +81,9 @@ export class WebTransportServer extends EventEmitter<WebTransportServerEvents> {
      * @description This function is called when a new connection is received from the server
      */
     private connection(client: Deno.PointerValue<unknown>) {
-        const SHARED_BUF = new SharedArrayBuffer(65536);
+        const SHARED_BUF = new ArrayBuffer(65536);
         const CONN_BUFFER = new Uint8Array(SHARED_BUF);
-        // window.WTLIB.symbols.proc_init_datagrams(
-        //     client,
-        //     CONN_BUFFER,
-        //     CONN_BUFFER.byteLength,
-        // );
-        //Setting up the stream for the new connection
+
         const conn = new WebTransportConnection(
             client,
             CONN_BUFFER,
@@ -110,70 +95,51 @@ export class WebTransportServer extends EventEmitter<WebTransportServerEvents> {
         );
         this.emit("connection", conn);
     }
-    /**
-     * @callback notify
-     * @param {number} code
-     * @param {Deno.PointerValue<unknown>} buffer
-     * @param {number} buflen
-     * @returns {void}
-     *
-     * @description This function is called when a new event is received from the server
-     */
-    private notify(
-        _code: unknown | number,
-        buffer: Deno.PointerValue<unknown>,
-        buflen: number,
-    ) {
-        const code = _code as bigint;
-        console.log(code);
-        if (buflen < 0) {
-            return;
-        }
-        const pointer = Deno.UnsafePointerView.getArrayBuffer(
-            buffer as unknown as NonNullable<Deno.PointerValue>,
-            buflen,
-        );
-        const event = new MessageEvent("message", {
-            data: pointer,
-        });
 
-        //TODO(hironichu): Implement Error/event catching from rust to free the memory once a connection drop or if something else happens.
-        this.emit("event", event);
-    }
-
-    close() {
-        this.#NOTIFY_PTR.unref();
-        this.#NOTIFY_PTR.close();
-        //
-        this.#CONNECTION_CB.unref();
-        this.#CONNECTION_CB.close();
-
-        if (this.#SRV_PTR) {
-            // await window.WTLIB.symbols.proc_server_close(this.#SRV_PTR);
-        }
-        this.emit("close", new CloseEvent("close"));
+    async close() {
+        console.info("[JS] SERVER CLOSE CALLED");
         //free all the connections
-        this.connections.forEach((conn, id) => {
-            if (conn.state != "closed") {
-                window.WTLIB.symbols.proc_client_close(
-                    this.#SRV_PTR!,
-                    conn.pointer,
+        if (this.#SRV_PTR) {
+            if (this.connections.size > 0) {
+                await window.WTLIB.symbols.proc_server_close_clients(
+                    this.#SRV_PTR,
                 );
             }
-            window.WTLIB.symbols.free_conn(conn.pointer);
+        }
+        this.connections.forEach((conn, id) => {
+            if (conn.state != "closed" && conn.pointer) {
+                window.WTLIB.symbols.proc_client_close(
+                    conn.pointer,
+                );
+                window.WTLIB.symbols.free_conn(conn.pointer);
+                conn.state = "closed";
+            }
             this.connections.delete(id);
         });
 
+        this.#CONNECTION_CB.close();
+        await new Promise((r) => {
+            setTimeout(() => {
+                window.WTLIB.symbols.proc_server_close(this.#SRV_PTR!);
+                r(true);
+            }, 100);
+        });
         window.WTLIB.symbols.free_server(this.#SRV_PTR!);
         this.#SRV_PTR = undefined;
-        return;
+        console.info("[SERVER] Server closed");
     }
-    public async listen() {
-        await window.WTLIB.symbols.proc_server_listen(
-            this.#SRV_PTR!,
-            this.#CONNECTION_CB.pointer,
-        );
-        return this;
+    get ready() {
+        return new Promise((resolve, reject) => {
+            console.info("[SERVER] Server ready");
+            const rest = window.WTLIB.symbols.proc_server_listen(
+                this.#SRV_PTR!,
+                this.#CONNECTION_CB.pointer,
+            );
+            if (!rest) {
+                reject("Failed to listen");
+            }
+            resolve(this);
+        });
     }
     private checkArgs(_options: WebTransportServerOptions) {
         if (
@@ -198,8 +164,14 @@ export class WebTransportServer extends EventEmitter<WebTransportServerEvents> {
                     "Invalid certificate or key file path (empty string)",
                 );
             }
-            Deno.statSync(_options.certFile);
-            Deno.statSync(_options.keyFile);
+            try {
+                Deno.statSync(_options.certFile);
+                Deno.statSync(_options.keyFile);
+            } catch {
+                throw new TypeError(
+                    "Invalid certificate or key file path",
+                );
+            }
             //
             certificate = _options.certFile;
             key = _options.keyFile;

@@ -26,16 +26,32 @@ const server = new WebTransportServer("https://localhost:4433", {
 });
 
 await server.ready;
-
 console.log("Server listening");
+const decodeer = new TextDecoder();
+const stdin = Deno.stdin.readable;
 server.on("connection", async (conn) => {
-    console.log("New client");
-    const bidiStream = conn.datagrams;
-    const writer = bidiStream.writable.getWriter();
-    writer.write(new Uint8Array([1, 2, 3, 4, 5]));
+    console.log("New connection");
+    const bidiStream = conn.incomingBidirectionalStreams;
+    const BIDireader = bidiStream.getReader();
+    const { value: firststream } = await BIDireader.read();
 
-    //read incoming datagrams
-    for await (const read of bidiStream.readable) {
-        console.log(read);
-    }
+    console.log("READING STD IN");
+    await Promise.all([
+        (async () => {
+            for await (const data of firststream!.readable) {
+                const decoded = decodeer.decode(data).trim().replaceAll(
+                    "\t",
+                    " ",
+                );
+                if (decoded === "exit") {
+                    await server.close();
+                    return;
+                }
+                console.log("Recevied : ", decoded);
+            }
+        })(),
+        (() => {
+            stdin.pipeTo(firststream!.writable);
+        })(),
+    ]);
 });

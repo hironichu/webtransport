@@ -1,6 +1,6 @@
 import { toFileUrl } from "./deps.ts";
 import LIB_URL from "../utils/download_lib.ts";
-import { symbols } from "./interface.ts";
+import { symbols } from "./symbols.ts";
 
 let local = false;
 let download_lib: URL;

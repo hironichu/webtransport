@@ -1,0 +1,38 @@
+{
+	// Use IntelliSense to learn about possible attributes.
+	// Hover to view descriptions of existing attributes.
+	// For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
+	"version": "0.2.0",
+	"configurations": [
+		{
+			"request": "launch",
+			"name": "server-uni-recv",
+			"type": "node",
+			"program": "${workspaceFolder}/examples/deno/wt_server_uni_recv.ts",
+			"cwd": "${workspaceFolder}",
+			"runtimeExecutable": "C:\\Users\\zenze\\.deno\\bin\\deno.EXE",
+			"runtimeArgs": [
+				"run",
+				"--unstable",
+				"--inspect-wait",
+				"--allow-all"
+			],
+			"attachSimplePort": 9229
+		},
+		{
+			"request": "launch",
+			"name": "client-uni-send",
+			"type": "node",
+			"program": "${workspaceFolder}/examples/deno/wt_client_uni_send.ts",
+			"cwd": "${workspaceFolder}",
+			"runtimeExecutable": "C:\\Users\\zenze\\.deno\\bin\\deno.EXE",
+			"runtimeArgs": [
+				"run",
+				"--unstable",
+				"--inspect-wait",
+				"--allow-all"
+			],
+			"attachSimplePort": 9229
+		}
+	]
+}

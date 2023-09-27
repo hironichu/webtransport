@@ -41,12 +41,14 @@ tokio = { version = "=1.32.0", default-features = false, features = [
 	"macros",
 ] }
 # wtransport = "0.1.4" # TODO: Replace this once the fix for arm is merged.
-wtransport = { git = "https://github.com/hironichu/wtransport", branch = "feat/new", features = [
+wtransport = { git = "https://github.com/hironichu/wtransport", branch = "master", features = [
 	"dangerous-configuration",
+	"quinn",
 ] }
-wtransport-proto = { git = "https://github.com/hironichu/wtransport", branch = "feat/new" }
-rcgen = "=0.11.1"
+wtransport-proto = { git = "https://github.com/hironichu/wtransport", branch = "master" }
+rcgen = "=0.11.2"
 ring = "=0.16.20"
-time = "=0.3.28"
+time = "=0.3.29"
 anyhow = "=1.0.75"
 serde = { version = "=1.0", features = ["derive"] }
+serde_json = "1.0.107"

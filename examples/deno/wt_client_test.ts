@@ -28,29 +28,33 @@ import "../../mod/mod.ts";
 //         await browser.close();
 //     },
 // );
-Deno.test(
-    {
-        name: "Client connect/close (unsafe)",
-        sanitizeOps: false,
-        sanitizeResources: false,
-    },
-    async () => {
-        //THis causes panic???????
-        // const server = new WebTransportServer(4433, {
-        //     certFile: "./certs/cert.pem",
-        //     keyFile: "./certs/key.pem",
-        //     maxTimeout: 10,
-        //     keepAlive: 5,
-        // });
+// Deno.test(
+//     {
+//         name: "Client connect/close (unsafe)",
+//         sanitizeOps: false,
+//         sanitizeResources: false,
+//     },
+//     async () => {
+//         //THis causes panic???????
+//         const server = new WebTransportServer("https://localhost:4433", {
+//             certFile: "./certs/localhost.crt",
+//             keyFile: "./certs/localhost.key",
+//             maxTimeout: 10,
+//             keepAlive: 3,
+//         });
+//         await server.ready;
+//         server.on("connection", (client) => {
+//             setTimeout(async () => {
+//                 client.close();
+//                 await server.close();
+//             }, 2000);
+//         });
+//         const client = new WebTransport("https://localhost:4433", {
+//             maxTimeout: 50,
+//             keepAlive: 3,
+//         });
+//         await client.ready;
 
-        // const client = new WebTransport("https://localhost:4433", {
-        //     maxTimeout: 50,
-        //     keepAlive: 3,
-        //     validateCertificate: false,
-        // });
-        // server.on("connection", (_) => {
-        //     console.log("OK");
-        //     // await client.close();
-        // });
-    },
-);
+//         console.log("Closing");
+//     },
+// );

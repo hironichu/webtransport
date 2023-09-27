@@ -1,15 +1,13 @@
-use connection::{Client, Conn, Server};
 use once_cell::sync::Lazy;
 use tokio::runtime::Runtime;
 
 ///------------------------------------
-static mut SEND_FN: Option<extern "C" fn(u32, *mut u8, u32)> = None;
-static mut SERVER_CONN_FN: Option<extern "C" fn(*mut Conn<Server>)> = None;
-static mut CLIENT_CONN_FN: Option<extern "C" fn(*mut Conn<Client>)> = None;
+// static mut SEND_FN: Option<extern "C" fn(u32, *mut u8, u32)> = None;
+
 static RUNTIME: Lazy<Runtime> = Lazy::new(|| Runtime::new().unwrap());
 ///------------------------------------
 mod certificate;
-pub mod client;
+mod client;
 mod connection;
-pub mod server;
+mod server;
 mod shared;

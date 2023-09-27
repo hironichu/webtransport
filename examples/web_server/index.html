@@ -28,28 +28,8 @@
 	<!-- TBA Stats -->
 	<script type="module">
 		const decoder = new TextDecoder();
-		const res = [];
-		async function readData(readable) {
-			console.log("start reading")
-			const reader = readable.getReader();
-			while (true) {
-				const { value, done } = await reader.read();
-				if (done) {
-					break;
-				}
-				res.push(decoder.decode(value));
-			}
-		}
-		window.TESTFN = () => {
-			//Check if there are dups in the res array
-			const dups = res.filter((item, index) => res.indexOf(item) != index);
-			if (dups.length > 0) {
-				console.log("DUPS : ", dups);
-			}
-		}
-		window.serveurDEMO = null;
-		window.writeDDBN = null;
-		const webtransport = new WebTransport('https://HOST_IP:4433/', {
+
+		window.transport = new WebTransport('https://HOST_IP:4433/', {
 			congestionControl: "throughput",
 			allowPooling: true,
 			serverCertificateHashes: [{
@@ -57,31 +37,50 @@
 				value: new Uint8Array(CERT_HASH)
 			}]
 		})
-		await webtransport.ready;
-		window.serveurDEMO = webtransport;
-		console.log(webtransport)
-		webtransport.onstatechange = (event) => {
+		await window.transport.ready;
+
+		console.log(window.transport)
+		window.transport.onstatechange = (event) => {
 			console.log("EVENT : ", event);
 		}
-		try {
-			const writable = await webtransport.datagrams.writable;
-			const readable = await webtransport.datagrams.readable;
-			window.writeDDBN = await webtransport.datagrams.writable.getWriter();
-			readData(readable);
-			let int2 = 0;
-			const encoder = new TextEncoder();
-			console.log("start sending")
-			performance.mark("start");
-			while (1) {
-				if (int2 === 500) {
-					break;
+		window.stream = await transport.createBidirectionalStream();
+		//get reader
+		window.reader = stream.readable.getReader();
+		//read data
+		Promise.all([(async () => {
+			while (true) {
+				let {
+					done,
+					value
+				} = await reader.read()
+				if (done) {
+					break
 				}
-				await window.writeDDBN.write(encoder.encode(int2++));
+				console.log("Received : ", decoder.decode(value))
 			}
-
-		} catch (e) {
-			console.error(e);
-		}
+		})()])
+		// for await (const data of stream.readable) {
+		// 	console.log("Recevied : ", decoder.decode(data));
+		// }
+		window.sender = stream.writable.getWriter();
+		// const decoder = new TextDecoder();
+		// for await (const stream of incomignUNi) {
+		// 	console.log("INCOMING UNI : ", stream)
+		// 	stream.readableStreamClosed.then(() => {
+		// 		console.log("INCOMING UNI CLOSED")
+		// 	})
+		// 	let reader = stream.readable.getReader()
+		// 	while (true) {
+		// 		let {
+		// 			done,
+		// 			value
+		// 		} = await reader.read()
+		// 		if (done) {m
+		// 			break
+		// 		}
+		// 		console.log("INCOMING UNI DATA : ", decoder.decode(value))
+		// 	}
+		// }
 	</script>
 </body>
 

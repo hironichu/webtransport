@@ -8,8 +8,9 @@ export function encodeBuf(v: string | Uint8Array): [Uint8Array, number] {
     const encoded = encoder.encode(v);
     return [encoded, encoded.byteLength];
 }
-
+export const decoder = new TextDecoder();
 export default {
+    decoder,
     encoder,
     encodeBuf,
 };
