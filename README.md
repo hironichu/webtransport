@@ -3,6 +3,7 @@
 This library implements a very WIP version of the
 [WebTransport](https://w3c.github.io/webtransport/) API for Deno.
 
+
 > This implementation tries to follow the web standards but has some differences
 > ⚠️ This is not production ready ⚠️
 
@@ -39,6 +40,8 @@ without importing the classes
 
 This might not be practical for some people, but for now wont be changed.
 
+
+
 ## Usage
 
 ### Client example :
@@ -48,6 +51,7 @@ has not been defined).
 
 ```ts
 import "https://deno.land/x/webtransport/mod.ts";
+
 const encoder = new TextEncoder();
 //Client
 const transport = new WebTransport("https://localhost:4433");
@@ -75,17 +79,11 @@ const reader = stream.readable.getReader();
 const decoder = new TextDecoder();
 const { value, done } = await reader.read();
 console.log(decoder.decode(value));
-
-/// Close the stream
-/// This will close the stream and send a FIN packet to the server
-/// NOTE : The api for closing the stream is not yet implemented in the browser
-await stream.close();
 ```
 
 ### Server example :
 
 This server tries to be as close to the client api but has some differences.
-
 You can reuse the same api as the client because they share the same
 implementation for streams.
 
@@ -99,6 +97,7 @@ const transport = new WebTransportServer(4433, {
     maxTimeout: 10,
     keepAlive: 3,
 });
+
 
 //Required to make sure the server is listening for new connections.
 await transport.ready;
@@ -116,3 +115,4 @@ transport.on("connection", async (conn) => {
     await writer.write(data);
 });
 ```
+

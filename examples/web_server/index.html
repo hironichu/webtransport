@@ -43,6 +43,7 @@
 		window.transport.onstatechange = (event) => {
 			console.log("EVENT : ", event);
 		}
+
 		window.stream = await transport.createBidirectionalStream();
 		//get reader
 		window.reader = stream.readable.getReader();
@@ -64,6 +65,7 @@
 		// }
 		window.sender = stream.writable.getWriter();
 		// const decoder = new TextDecoder();
+
 		// for await (const stream of incomignUNi) {
 		// 	console.log("INCOMING UNI : ", stream)
 		// 	stream.readableStreamClosed.then(() => {

@@ -189,22 +189,6 @@ jobs:
             BUILD_TARGET: release
             CI_BUILD: true
         run: |
-          deno task test
-      - name: Upload release to GitHub
-        uses: softprops/action-gh-release@59c3b4891632ff9a897f99a91d7bc557467a3a22
-        if: |
-          (matrix.job == 'publish' && matrix.profile == 'release') &&
-          github.repository == 'hironichu/webtransport' &&
-          github.ref == 'refs/heads/main'
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          files: |
-            target/${{matrix.profile}}/webtransport.dll
-            target/${{matrix.profile}}/libwebtransport.so
-            target/${{matrix.profile}}/libwebtransport_aarch64.so
-            target/${{matrix.profile}}/libwebtransport.dylib
-          draft: true
   publish:
     name: "Publish to Github"
     needs: [test, build]
