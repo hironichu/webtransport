@@ -207,6 +207,7 @@ pub unsafe extern "C" fn proc_server_close(server_ptr: *mut WebTransportServer) 
     }
     0
 }
+
 #[no_mangle]
 pub unsafe extern "C" fn proc_server_close_clients(server_ptr: *mut WebTransportServer) -> usize {
     assert!(!server_ptr.is_null());

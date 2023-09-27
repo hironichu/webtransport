@@ -93,7 +93,7 @@ export class WebTransportBidirectionalStream {
             undefined,
             errorCB,
         );
-        console.log(this.ptr);
+
         this.writable = WebTransportSendStream.from(this.ptr, errorCB);
     }
 }
@@ -111,7 +111,7 @@ export class WebTransportReceiveStream {
         DEFAULT_CHUNK_SIZE = 1024,
         cb: Deno.PointerValue<unknown>,
     ) {
-        console.log("BIDI READER");
+
         return new ReadableStream({
             type: "bytes",
             start(controller) {
