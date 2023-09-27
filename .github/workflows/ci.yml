@@ -205,3 +205,30 @@ jobs:
             target/${{matrix.profile}}/libwebtransport_aarch64.so
             target/${{matrix.profile}}/libwebtransport.dylib
           draft: true
+  publish:
+    name: "Publish to Github"
+    needs: [test, build]
+    if: |
+        github.event_name == 'push' || !startsWith(github.event.pull_request.head.label, 'hironichu:') && github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/')
+    runs-on: "ubuntu-latest"
+    steps:
+        - name: Creating target structure
+          run: |
+            mkdir -p target
+        - name: Download artifact
+          uses: actions/download-artifact@master
+          with:
+            #   name: release
+              path: target
+        - name: Get artifact from build
+          uses: softprops/action-gh-release@59c3b4891632ff9a897f99a91d7bc557467a3a22
+          env:
+            GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          with:
+            files: |
+                target/release/webtransport.dll
+                target/release/libwebtransport.so
+                target/release/libwebtransport_aarch64.so
+                target/release/libwebtransport.dylib
+            draft: true
+            
