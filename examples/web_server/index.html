@@ -43,7 +43,27 @@
 		window.transport.onstatechange = (event) => {
 			console.log("EVENT : ", event);
 		}
-		// let incomignUNi = await window.transport.incomingUnidirectionalStreams
+		window.stream = await transport.createBidirectionalStream();
+		//get reader
+		window.reader = stream.readable.getReader();
+		//read data
+		Promise.all([(async () => {
+			while (true) {
+				let {
+					done,
+					value
+				} = await reader.read()
+				if (done) {
+					break
+				}
+				console.log("Received : ", decoder.decode(value))
+			}
+		})()])
+		// for await (const data of stream.readable) {
+		// 	console.log("Recevied : ", decoder.decode(data));
+		// }
+		window.sender = stream.writable.getWriter();
+		// const decoder = new TextDecoder();
 		// for await (const stream of incomignUNi) {
 		// 	console.log("INCOMING UNI : ", stream)
 		// 	stream.readableStreamClosed.then(() => {
