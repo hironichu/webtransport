@@ -1,4 +1,5 @@
-import {
+//Copyright (c) 2025, Hironichu. All rights reserved.
+import type {
   BidirectionalStream,
   ReceiveStream,
   SendStream,

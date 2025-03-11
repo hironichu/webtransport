@@ -1,3 +1,4 @@
+//Copyright (c) 2025, Hironichu. All rights reserved.
 export class StreamID {
   #id: number;
   constructor() {

@@ -1,3 +1,4 @@
+//Copyright (c) 2025, Hironichu. All rights reserved.
 import {
   type BidirectionalStream,
   type ReceiveStream,
@@ -282,6 +283,25 @@ export class Client<Type extends ClientTransportType> {
   }
 }
 
+  /**
+   * A class representing a WebTransport and QUIC server.
+   *
+   * @example
+   * ```ts
+   * import { Server } from "@webtransport/webtransport";
+   * const config = new ServerConfig(
+   *    "0.0.0.0", // hostname 
+   *    443, // port number
+   *    "./cert.pem", // path to the certificate file
+   *    "./private.pem", // path to the private key file
+   *    "h3-qc", // optional argument that will be used for only for QUIC connection in the protocol negotation
+   * );
+   *
+   * 
+   * ```
+   *
+   * @module
+   */
 export class Server {
   private readonly quickEndpoint: Deno.QuicEndpoint;
   public listener: Deno.QuicListener | undefined;
@@ -308,7 +328,27 @@ export class Server {
     return [sid, client];
   }
 
-  public async start() {
+  /**
+   * Starts the server and begins listening for incoming connections.
+   * @returns {Promise<void>} A promise that resolves when the server is started.
+   * @throws {TypeError} If the listener is already started.
+   * @throws {Error} If the listener fails to start.
+   * @example
+   * ```ts
+   * const server = new Server(config);
+   * await server.start();
+   * 
+   * for await (const conn of server.listener!) {
+   *     const client = await server.handle(conn);
+   *     if (client) {
+   *         Promise.all([handle(client)]);
+   *     }
+   *  }
+   * 
+   * async function handle(info: [StreamID, Client<ClientTransportType>]): void;
+   * ...
+   */
+  public async start(): Promise<void> {
     this.certHash.set(await this.config.certHash());
 
     this.listener = this.quickEndpoint.listen({
@@ -322,6 +362,28 @@ export class Server {
     console.debug("Server: Listener started");
   }
 
+  /**
+   * Handles incoming connections and creates a client instance.
+   * @param {Deno.QuicConn} conn - The incoming connection.
+   * @returns {Promise<[StreamID, Client<ClientTransportType>]>} A promise that resolves to a tuple containing the stream ID and the client instance.
+   * @throws {TypeError} If the listener is not started.
+   * @throws {Error} If the connection fails to upgrade.
+   * @example
+   * ```ts
+   * const server = new Server(config);
+   * await server.start();
+   *    
+   * for await (const conn of server.listener!) {
+   *    const client = await server.handle(conn);
+   *   if (client) {
+   *       Promise.all([handle(client)]);
+   *   }
+   * }
+   *    
+   * async function handle(info: [StreamID, Client<ClientTransportType>]): void;
+   * ...
+   * ```
+   */
   public async handle(
     conn: Deno.QuicConn,
   ): Promise<[StreamID, Client<ClientTransportType>] | undefined> {
