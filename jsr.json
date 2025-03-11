@@ -2,5 +2,8 @@
   "name": "@webtransport/webtransport",
   "version": "0.1.2",
   "license": "MIT",
-  "exports": "./mod.ts"
+  "exports": "./mod.ts",
+  "exclude": [
+    "src/tests"
+  ]
 }
