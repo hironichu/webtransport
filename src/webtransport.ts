@@ -6,8 +6,11 @@ import {
   StreamID,
 } from "./types/streamdef.ts";
 
-import type { ClientQcInterface, ClientWTInterface } from "./types/interfaces.ts";
-import type  { ServerConfig } from "./config.ts";
+import type {
+  ClientQcInterface,
+  ClientWTInterface,
+} from "./types/interfaces.ts";
+import type { ServerConfig } from "./config.ts";
 
 export type ClientType = "WT" | "QC";
 
@@ -231,7 +234,9 @@ export class Client<Type extends ClientTransportType> {
     }
   }
 
-  getStream(id: StreamID): BidirectionalStream | SendStream | ReceiveStream | undefined {
+  getStream(
+    id: StreamID,
+  ): BidirectionalStream | SendStream | ReceiveStream | undefined {
     return this.client.getStream(id);
   }
 
@@ -246,7 +251,7 @@ export class Client<Type extends ClientTransportType> {
       return undefined;
     }
   }
-  openBidirectionalStream(): Promise<StreamID | undefined>  | undefined {
+  openBidirectionalStream(): Promise<StreamID | undefined> | undefined {
     try {
       return this.client.openBidirectionalStream();
     } catch {
@@ -254,7 +259,9 @@ export class Client<Type extends ClientTransportType> {
       return undefined;
     }
   }
-  sendDatagrams(buffer: Uint8Array<ArrayBufferLike>): Promise<void> | undefined {
+  sendDatagrams(
+    buffer: Uint8Array<ArrayBufferLike>,
+  ): Promise<void> | undefined {
     // Check if we are using WebTransport or QUIC
     if (this.client instanceof WtClient) {
       console.error("Error: sendDatagrams is not supported for WebTransport");
@@ -283,25 +290,24 @@ export class Client<Type extends ClientTransportType> {
   }
 }
 
-  /**
-   * A class representing a WebTransport and QUIC server.
-   *
-   * @example
-   * ```ts
-   * import { Server } from "@webtransport/webtransport";
-   * const config = new ServerConfig(
-   *    "0.0.0.0", // hostname 
-   *    443, // port number
-   *    "./cert.pem", // path to the certificate file
-   *    "./private.pem", // path to the private key file
-   *    "h3-qc", // optional argument that will be used for only for QUIC connection in the protocol negotation
-   * );
-   *
-   * 
-   * ```
-   *
-   * @module
-   */
+/**
+ * A class representing a WebTransport and QUIC server.
+ *
+ * @example
+ * ```ts
+ * import { Server } from "@webtransport/webtransport";
+ * const config = new ServerConfig(
+ *    "0.0.0.0", // hostname
+ *    443, // port number
+ *    "./cert.pem", // path to the certificate file
+ *    "./private.pem", // path to the private key file
+ *    "h3-qc", // optional argument that will be used for only for QUIC connection in the protocol negotation
+ * );
+ *
+ * ```
+ *
+ * @module
+ */
 export class Server {
   private readonly quickEndpoint: Deno.QuicEndpoint;
   public listener: Deno.QuicListener | undefined;
@@ -337,14 +343,14 @@ export class Server {
    * ```ts
    * const server = new Server(config);
    * await server.start();
-   * 
+   *
    * for await (const conn of server.listener!) {
    *     const client = await server.handle(conn);
    *     if (client) {
    *         Promise.all([handle(client)]);
    *     }
    *  }
-   * 
+   *
    * async function handle(info: [StreamID, Client<ClientTransportType>]): void;
    * ...
    */
@@ -372,14 +378,14 @@ export class Server {
    * ```ts
    * const server = new Server(config);
    * await server.start();
-   *    
+   *
    * for await (const conn of server.listener!) {
    *    const client = await server.handle(conn);
    *   if (client) {
    *       Promise.all([handle(client)]);
    *   }
    * }
-   *    
+   *
    * async function handle(info: [StreamID, Client<ClientTransportType>]): void;
    * ...
    * ```
