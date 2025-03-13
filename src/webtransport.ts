@@ -407,4 +407,33 @@ export class Server {
       return this.createClient<WebTransport>(webtransport);
     }
   }
+
+  /**
+   * Closes the server and stops listening for incoming connections.
+   * @returns {Promise<void>} A promise that resolves when the server is closed.
+   * @throws {Error} If the listener fails to close.
+   * @example
+   * ```ts
+   * const server = new Server(config);
+   * await server.start();
+   *
+   * // Close the server after 10 seconds
+   * setTimeout(() => {
+   *     await server.close();
+   * }, 10000);
+   * ```
+   */
+  public close(): void {
+    if (this.listener) {
+      this.listener.stop();
+      this.quickEndpoint.close();
+      console.debug("Server: Listener closed");
+    } else {
+      console.error("Server: Listener not started");
+    }
+  }
+
+  public get getCertHash(): Uint8Array<ArrayBufferLike> {
+    return this.certHash;
+  }
 }
