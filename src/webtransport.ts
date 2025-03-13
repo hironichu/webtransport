@@ -14,27 +14,46 @@ import type { ServerConfig } from "./config.ts";
 
 export type ClientType = "WT" | "QC";
 
-//Wt Client
+/**
+ * A class representing a WebTransport client.
+ *
+ * @example
+ * ```ts
+ * import { Client } from "@webtransport/webtransport";
+ * ... server code ...
+ * const client = new Client(transport);
+ * ```
+ *
+ * @module
+ */
 export class WtClient implements ClientWTInterface<WebTransport> {
   public readonly bidirectionalStreams: WeakMap<StreamID, BidirectionalStream> =
     new WeakMap<StreamID, BidirectionalStream>();
+
   public readonly sendStream: WeakMap<StreamID, SendStream> = new WeakMap<
     StreamID,
     SendStream
   >();
+
   public readonly receiveStream: WeakMap<StreamID, ReceiveStream> = new WeakMap<
     StreamID,
     ReceiveStream
   >();
+
   public readonly signal: AbortController = new AbortController();
   public constructor(public readonly transport: WebTransport) {
-    console.debug("WtClient: New Webtransport Client initialized");
+    // console.debug("WtClient: New Webtransport Client initialized");
     this.transport.closed.then(() => {
-      console.debug("WT_Client: Transport closed");
+      // console.debug("WT_Client: Transport closed");
       this.signal.abort();
     });
   }
 
+  /**
+   * Returns the stream associated with the given stream ID.
+   * @param {StreamID} streamID - The ID of the stream to retrieve.
+   * @returns {BidirectionalStream | SendStream | ReceiveStream | undefined} The stream associated with the given ID, or undefined if not found.
+   */
   getStream(
     streamID: StreamID,
   ): BidirectionalStream | SendStream | ReceiveStream | undefined {
@@ -49,6 +68,10 @@ export class WtClient implements ClientWTInterface<WebTransport> {
     return undefined;
   }
 
+  /**
+   * Opens a send stream over the transport.
+   * @returns {Promise<StreamID | undefined>} A promise that resolves to the stream ID.
+   */
   async openSendStream(): Promise<StreamID | undefined> {
     if (this.signal.signal.aborted) {
       return undefined;
@@ -66,6 +89,10 @@ export class WtClient implements ClientWTInterface<WebTransport> {
     }
   }
 
+  /**
+   * Opens a receive stream over the transport.
+   * @returns {Promise<StreamID | undefined>} A promise that resolves to the stream ID.
+   */
   async openReceiveStream(): Promise<StreamID | undefined> {
     if (this.signal.signal.aborted) {
       return undefined;
@@ -85,10 +112,19 @@ export class WtClient implements ClientWTInterface<WebTransport> {
     }
   }
 
+  /**
+   * Opens a bidirectional stream over the transport.
+   * @returns {Promise<StreamID>} A promise that resolves to the stream ID.
+   */
   openBidirectionalStream(): Promise<StreamID> {
     throw new Error("Method not implemented.");
   }
 
+  /**
+   * Sends datagrams over the transport.
+   * @param {Uint8Array} buffer - The datagram to send.
+   * @returns {Promise<void | undefined>} A promise that resolves when the datagram is sent, or undefined if not supported.
+   */
   close(closeInfo?: WebTransportCloseInfo): void {
     try {
       this.transport.close(closeInfo);
@@ -98,7 +134,18 @@ export class WtClient implements ClientWTInterface<WebTransport> {
     }
   }
 }
-// Quic Client
+
+/**
+ * A class representing a QUIC client.
+ *
+ * @example
+ * ```ts
+ * import { Client } from "@webtransport/webtransport";
+ * const client = new Client(transport);
+ * ```
+ *
+ * @module
+ */
 class QcClient implements ClientQcInterface<Deno.QuicConn> {
   public readonly bidirectionalStreams: WeakMap<StreamID, BidirectionalStream> =
     new WeakMap<StreamID, BidirectionalStream>();
@@ -112,17 +159,22 @@ class QcClient implements ClientQcInterface<Deno.QuicConn> {
   >();
   public readonly signal: AbortController = new AbortController();
   #readableController: ReadableByteStreamController | undefined;
+
   public constructor(public readonly transport: Deno.QuicConn) {
-    console.debug("QC_Client: New Webtransport Client initialized");
+    // console.debug("QC_Client: New Webtransport Client initialized");
     this.transport.closed.then(() => {
-      console.debug("QC_Client: Transport closed");
+      // console.debug("QC_Client: Transport closed");
       this.signal.abort();
     });
     //   Promise.all([(async () => {
     //   })()]);
     this.#receiveDatagrams();
   }
-
+  /**
+   * Returns the stream associated with the given stream ID.
+   * @param {StreamID} streamID - The ID of the stream to retrieve.
+   * @returns {BidirectionalStream | SendStream | ReceiveStream | undefined} The stream associated with the given ID, or undefined if not found.
+   */
   getStream(
     streamID: StreamID,
   ): SendStream | BidirectionalStream | ReceiveStream | undefined {
@@ -136,7 +188,10 @@ class QcClient implements ClientQcInterface<Deno.QuicConn> {
     console.error("QC_Client: invalid streamid");
     return undefined;
   }
-
+  /**
+   * Opens a send stream over the transport.
+   * @returns {Promise<StreamID | undefined>} A promise that resolves to the stream ID.
+   */
   async openSendStream(): Promise<StreamID | undefined> {
     try {
       const stream = await this.transport.createUnidirectionalStream({
@@ -150,7 +205,10 @@ class QcClient implements ClientQcInterface<Deno.QuicConn> {
       //
     }
   }
-
+  /**
+   * Opens a receive stream over the transport.
+   * @returns {Promise<StreamID | undefined>} A promise that resolves to the stream ID.
+   */
   async openReceiveStream(): Promise<StreamID | undefined> {
     try {
       const rstream = this.transport.incomingUnidirectionalStreams;
@@ -166,10 +224,18 @@ class QcClient implements ClientQcInterface<Deno.QuicConn> {
       return undefined;
     }
   }
+  /**
+   * Opens a bidirectional stream over the transport.
+   * @returns {Promise<StreamID>} A promise that resolves to the stream ID.
+   */
   openBidirectionalStream(): Promise<StreamID> {
     throw new Error("Method not implemented.");
   }
-
+  /**
+   * Sends datagrams over the transport.
+   * @param {Uint8Array} buffer - The datagram to send.
+   * @returns {Promise<void | undefined>} A promise that resolves when the datagram is sent, or undefined if not supported.
+   */
   async sendDatagrams(buffer: Uint8Array): Promise<void | undefined> {
     try {
       return await this.transport.sendDatagram(buffer);
@@ -178,7 +244,11 @@ class QcClient implements ClientQcInterface<Deno.QuicConn> {
       return undefined;
     }
   }
-  get readable() {
+  /**
+   * Returns a readable stream for receiving datagrams.
+   * @returns {ReadableStream<Uint8Array<ArrayBufferLike>>} A readable stream of datagrams.
+   */
+  get readable(): ReadableStream<Uint8Array<ArrayBufferLike>> {
     return new ReadableStream({
       type: "bytes",
       start: (controller) => {
@@ -199,6 +269,10 @@ class QcClient implements ClientQcInterface<Deno.QuicConn> {
       }
     }
   }
+  /**
+   * Receives datagrams from the transport.
+   * @returns {ReadableStream<Uint8Array<ArrayBufferLike>> | undefined} A readable stream of datagrams, or undefined if not supported.
+   */
   receiveDatagrams(): ReadableStream<Uint8Array<ArrayBufferLike>> | undefined {
     try {
       return this.readable;
@@ -215,13 +289,24 @@ class QcClient implements ClientQcInterface<Deno.QuicConn> {
 
 export type ClientTransportType = WebTransport | Deno.QuicConn;
 
+/**
+ * A class representing a WebTransport and QUIC client.
+ *
+ * @example
+ * ```ts
+ * import { Client } from "@webtransport/webtransport";
+ * const client = new Client(transport);
+ * ```
+ *
+ * @module
+ */
 export class Client<Type extends ClientTransportType> {
   private readonly client: WtClient | QcClient;
 
   public constructor(
     public readonly transport: Type,
   ) {
-    console.debug("Client: New Client initialized");
+    // console.debug("Client: New Client initialized");
 
     if (transport.constructor.name === "WebTransport") {
       this.client = new WtClient(transport as WebTransport);
@@ -233,16 +318,27 @@ export class Client<Type extends ClientTransportType> {
       );
     }
   }
-
+  /**
+   * Returns the stream associated with the given stream ID.
+   * @param {StreamID} id - The ID of the stream to retrieve.
+   * @returns {BidirectionalStream | SendStream | ReceiveStream | undefined} The stream associated with the given ID, or undefined if not found.
+   */
   getStream(
     id: StreamID,
   ): BidirectionalStream | SendStream | ReceiveStream | undefined {
     return this.client.getStream(id);
   }
-
+  /**
+   * Opens a send stream over the transport.
+   * @returns {Promise<StreamID | undefined>} A promise that resolves to the stream ID, or undefined if not supported.
+   */
   openSendStream(): Promise<StreamID | undefined> {
     return this.client.openSendStream();
   }
+  /**
+   * Opens a receive stream over the transport.
+   * @returns {Promise<StreamID | undefined>} A promise that resolves to the stream ID, or undefined if not supported.
+   */
   openReceiveStream(): Promise<StreamID | undefined> | undefined {
     try {
       return this.client.openReceiveStream();
@@ -251,6 +347,10 @@ export class Client<Type extends ClientTransportType> {
       return undefined;
     }
   }
+  /**
+   * Opens a bidirectional stream over the transport.
+   * @returns {Promise<StreamID | undefined>} A promise that resolves to the stream ID, or undefined if not supported.
+   */
   openBidirectionalStream(): Promise<StreamID | undefined> | undefined {
     try {
       return this.client.openBidirectionalStream();
@@ -259,6 +359,11 @@ export class Client<Type extends ClientTransportType> {
       return undefined;
     }
   }
+  /**
+   * Sends datagrams over the transport.
+   * @param {Uint8Array<ArrayBufferLike>} buffer - The datagram to send.
+   * @returns {Promise<void> | undefined} A promise that resolves when the datagram is sent, or undefined if not supported.
+   */
   sendDatagrams(
     buffer: Uint8Array<ArrayBufferLike>,
   ): Promise<void> | undefined {
@@ -270,6 +375,10 @@ export class Client<Type extends ClientTransportType> {
     return this.client.sendDatagrams(buffer);
   }
 
+  /**
+   * Receives datagrams from the transport.
+   * @returns {ReadableStream<Uint8Array<ArrayBufferLike>> | undefined} A readable stream of datagrams, or undefined if not supported.
+   */
   receiveDatagrams(): ReadableStream<Uint8Array<ArrayBufferLike>> | undefined {
     // Check if we are using WebTransport or QUIC
     if (this.client instanceof WtClient) {
@@ -319,8 +428,6 @@ export class Server {
   public constructor(config: ServerConfig) {
     this.config = config;
     this.quickEndpoint = new Deno.QuicEndpoint(this.config.getQuicOptions);
-
-    console.debug("Server: QuickEndpoint Crerated");
   }
 
   public createClient<T extends ClientTransportType>(
@@ -330,7 +437,6 @@ export class Server {
     const sid = new StreamID();
     this.clients.set(sid, client);
 
-    console.debug("Server: Client added");
     return [sid, client];
   }
 
@@ -354,7 +460,10 @@ export class Server {
    * async function handle(info: [StreamID, Client<ClientTransportType>]): void;
    * ...
    */
-  public async start(): Promise<void> {
+  public async start(
+    maxIdleTimeout: number = 120000,
+    keepAliveInterval: 500,
+  ): Promise<void> {
     this.certHash.set(await this.config.certHash());
 
     this.listener = this.quickEndpoint.listen({
@@ -362,10 +471,9 @@ export class Server {
       cert: this.config.getCertFile,
       key: this.config.getKeyFile,
       alpnProtocols: this.config.getAlpnProtocols,
-      maxIdleTimeout: 120000,
-      keepAliveInterval: 1000,
+      maxIdleTimeout: maxIdleTimeout,
+      keepAliveInterval: keepAliveInterval,
     });
-    console.debug("Server: Listener started");
   }
 
   /**
@@ -410,7 +518,7 @@ export class Server {
 
   /**
    * Closes the server and stops listening for incoming connections.
-   * @returns {Promise<void>} A promise that resolves when the server is closed.
+   * @returns {void} A promise that resolves when the server is closed.
    * @throws {Error} If the listener fails to close.
    * @example
    * ```ts
@@ -419,7 +527,7 @@ export class Server {
    *
    * // Close the server after 10 seconds
    * setTimeout(() => {
-   *     await server.close();
+   *     server.close();
    * }, 10000);
    * ```
    */
@@ -427,13 +535,9 @@ export class Server {
     if (this.listener) {
       this.listener.stop();
       this.quickEndpoint.close();
-      console.debug("Server: Listener closed");
+      console.debug("WTServer: Listener closed");
     } else {
-      console.error("Server: Listener not started");
+      console.error("WTServer: Listener not started");
     }
-  }
-
-  public get getCertHash(): Uint8Array<ArrayBufferLike> {
-    return this.certHash;
   }
 }
