@@ -15,7 +15,7 @@ import type { ServerConfig } from "./config.ts";
 export type ClientType = "WT" | "QC";
 
 //Wt Client
-class WtClient implements ClientWTInterface<WebTransport> {
+export class WtClient implements ClientWTInterface<WebTransport> {
   public readonly bidirectionalStreams: WeakMap<StreamID, BidirectionalStream> =
     new WeakMap<StreamID, BidirectionalStream>();
   public readonly sendStream: WeakMap<StreamID, SendStream> = new WeakMap<
