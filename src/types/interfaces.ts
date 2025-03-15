@@ -6,6 +6,21 @@ import type {
   StreamID,
 } from "./streamdef.ts";
 
+/**
+ * ClientQcInterface interface for QUIC client.
+ * @interface ClientQcInterface
+ * @param {T} transport - The transport protocol.
+ * @param {WeakMap<StreamID, BidirectionalStream>} bidirectionalStreams - The bidirectional streams.
+ * @param {WeakMap<StreamID, SendStream>} sendStream - The send streams.
+ * @param {WeakMap<StreamID, ReceiveStream>} receiveStream - The receive streams.
+ * @description This interface is used to define the QUIC client with the specified parameters.
+ * It provides methods to get the stream, open a stream, send datagrams, receive datagrams, and close the connection.
+ * @example
+ * ```typescript
+ * const clientQcInterface = new ClientQc(
+ *   transport,
+ * );
+ */
 export interface ClientQcInterface<T> {
   transport: T;
   bidirectionalStreams: WeakMap<StreamID, BidirectionalStream>;
@@ -33,6 +48,21 @@ export interface ClientQcInterface<T> {
   close(info?: Deno.QuicCloseInfo | WebTransportCloseInfo): void;
 }
 
+/**
+ * ClientWTInterface interface for WebTransport client.
+ * @interface ClientWTInterface
+ * @param {T} transport - The transport protocol.
+ * @param {WeakMap<StreamID, BidirectionalStream>} bidirectionalStreams - The bidirectional streams.
+ * @param {WeakMap<StreamID, SendStream>} sendStream - The send streams.
+ * @param {WeakMap<StreamID, ReceiveStream>} receiveStream - The receive streams.
+ * @description This interface is used to define the WebTransport client with the specified parameters.
+ * It provides methods to get the stream, open a stream, and close the connection.
+ * @example
+ * ```typescript
+ * const clientWTInterface = new ClientWT(
+ *   transport,
+ * );
+ */
 export interface ClientWTInterface<T> {
   transport: T;
   bidirectionalStreams: WeakMap<StreamID, BidirectionalStream>;

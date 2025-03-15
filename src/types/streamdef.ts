@@ -1,4 +1,14 @@
 //Copyright (c) 2025, Hironichu. All rights reserved.
+
+/**
+ * StreamID class for QUIC stream ID.
+ * @class StreamID
+ * @description This class is used to generate a random stream ID for QUIC.
+ * @example
+ * ```typescript
+ * const streamID = new StreamID();
+ * ```
+ */
 export class StreamID {
   #id: number;
   constructor() {

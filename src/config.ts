@@ -1,7 +1,9 @@
 //Copyright (c) 2025, Hironichu. All rights reserved.
 import { assert } from "@std/assert/assert";
 import { decodeBase64 } from "@std/encoding/base64";
-export type alpnProtocols = Array<"h3" | "h3-qc" | string>;
+export type alpnProtocols = Array<
+  "h3" | "h3-qc-01" | "quic" | "h3-29" | string
+>;
 
 /**
  * ServerConfig class for QUIC server configuration.
@@ -32,7 +34,14 @@ export type alpnProtocols = Array<"h3" | "h3-qc" | string>;
  * @module
  */
 export class ServerConfig {
-  private readonly alpnProtocols: alpnProtocols = ["h3", "h3-29"];
+  private readonly alpnProtocols: alpnProtocols = [
+    "h3",
+    "h3-qc-01",
+    "h3-29",
+    "h3-alias-01",
+    "quic",
+    "h3-fb-05",
+  ];
   private readonly quicOptions: Deno.QuicEndpointOptions;
   constructor(
     private readonly hostmame: string,
@@ -71,10 +80,10 @@ export class ServerConfig {
 
   get getAlpnProtocols(): alpnProtocols {
     return this.alpnProtocols;
-  }
+  } 
 
   get getQuicOptions(): Deno.QuicEndpointOptions {
-    return this.quicOptions;
+    return this.quicOptions; 
   }
 
   get getCertFile(): string {
