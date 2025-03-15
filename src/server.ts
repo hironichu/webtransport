@@ -64,13 +64,12 @@ export class Server {
    * ...
    */
   public async start(
-    maxIdleTimeout: number = 120000,
-    keepAliveInterval: 500,
+    maxIdleTimeout = 12000,
+    keepAliveInterval = 1200,
   ): Promise<void> {
     this.certHash.set(await this.config.certHash());
 
     this.listener = this.quickEndpoint.listen({
-      congestionControl: "low-latency",
       cert: this.config.getCertFile,
       key: this.config.getKeyFile,
       alpnProtocols: this.config.getAlpnProtocols,

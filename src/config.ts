@@ -38,9 +38,6 @@ export class ServerConfig {
     "h3",
     "h3-qc-01",
     "h3-29",
-    "h3-alias-01",
-    "quic",
-    "h3-fb-05",
   ];
   private readonly quicOptions: Deno.QuicEndpointOptions;
   constructor(
@@ -48,7 +45,7 @@ export class ServerConfig {
     private readonly port: number,
     private readonly certFile: string,
     private readonly keyFile: string,
-    public readonly separateProtocol?: string,
+    public readonly separateProtocol?: string[] | string,
   ) {
     assert(
       port > 0 && port < 65536,
@@ -66,7 +63,12 @@ export class ServerConfig {
       port: this.port,
     };
     if (separateProtocol) {
-      this.alpnProtocols.push(separateProtocol);
+      if (typeof separateProtocol === "string") {
+        this.alpnProtocols.push(separateProtocol);
+      }
+      if (Array.isArray(separateProtocol)) {
+        this.alpnProtocols.push(...separateProtocol);
+      }
     }
   }
 
