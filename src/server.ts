@@ -108,8 +108,7 @@ export class Server {
     }
 
     if (
-      this.config.separateProtocol &&
-      conn.protocol === this.config.separateProtocol
+      this.config.separateProtocol && conn.protocol === this.config.separateProtocol
     ) {
       return this.createClient<Deno.QuicConn>(conn);
     } else {
@@ -117,7 +116,7 @@ export class Server {
         const webtransport = await Deno.upgradeWebTransport(conn);
         return this.createClient<WebTransport>(webtransport);
       } catch {
-        console.error("Error while upgrading connection");
+        console.error("Error while upgrading connection to WebTransport");
         return undefined;
       }
     }

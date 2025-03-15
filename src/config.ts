@@ -34,7 +34,7 @@ export type alpnProtocols = Array<
  * @module
  */
 export class ServerConfig {
-  private readonly alpnProtocols: alpnProtocols = [
+  public readonly alpnProtocols: alpnProtocols = [
     "h3",
     "h3-qc-01",
     "h3-29",
@@ -45,7 +45,7 @@ export class ServerConfig {
     private readonly port: number,
     private readonly certFile: string,
     private readonly keyFile: string,
-    public readonly separateProtocol?: string[] | string,
+    public readonly separateProtocol?: string,
   ) {
     assert(
       port > 0 && port < 65536,
@@ -63,12 +63,7 @@ export class ServerConfig {
       port: this.port,
     };
     if (separateProtocol) {
-      if (typeof separateProtocol === "string") {
-        this.alpnProtocols.push(separateProtocol);
-      }
-      if (Array.isArray(separateProtocol)) {
-        this.alpnProtocols.push(...separateProtocol);
-      }
+      this.alpnProtocols.push(separateProtocol);
     }
   }
 
