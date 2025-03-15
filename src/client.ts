@@ -4,8 +4,8 @@ import type {
   SendStream,
   StreamID,
 } from "../mod.ts";
-import { type ClientTransportType, QcClient, WtClient } from "./internal.ts";
-
+import { QcClient, WtClient } from "./internal.ts";
+import type { ClientTransportType } from "./types/interfaces.ts";
 /**
  * A class representing a WebTransport and QUIC client.
  *
@@ -19,12 +19,17 @@ import { type ClientTransportType, QcClient, WtClient } from "./internal.ts";
  */
 export class Client<Type extends ClientTransportType> {
   private readonly client: WtClient | QcClient;
-
+  public readonly signal: AbortController = new AbortController();
+  /**
+   * Creates a new Client instance.
+   * @param {Type} transport - The transport protocol (WebTransport or QUIC).
+   * @throws {Error} If the transport type is not supported.
+   */
   public constructor(public readonly transport: Type) {
     if (transport.constructor.name === "WebTransport") {
-      this.client = new WtClient(transport as WebTransport);
+      this.client = new WtClient(transport as WebTransport, this.signal);
     } else if (transport.constructor.name === "QuicConn") {
-      this.client = new QcClient(transport as Deno.QuicConn);
+      this.client = new QcClient(transport as Deno.QuicConn, this.signal);
     } else {
       throw new Error(
         `Unsupported transport type: ${transport.constructor.name}`,

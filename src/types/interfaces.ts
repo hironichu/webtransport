@@ -6,6 +6,7 @@ import type {
   StreamID,
 } from "./streamdef.ts";
 
+export type ClientTransportType = WebTransport | Deno.QuicConn;
 /**
  * ClientQcInterface interface for QUIC client.
  * @interface ClientQcInterface

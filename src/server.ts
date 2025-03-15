@@ -1,6 +1,6 @@
 import { StreamID } from "../mod.ts";
 import type { ServerConfig } from "./config.ts";
-import type { ClientTransportType } from "./internal.ts";
+import type { ClientTransportType } from "./types/interfaces.ts";
 import { Client } from "./client.ts";
 /**
  * A class representing a WebTransport and QUIC server.
@@ -108,7 +108,8 @@ export class Server {
     }
 
     if (
-      this.config.separateProtocol && conn.protocol === this.config.separateProtocol
+      this.config.separateProtocol &&
+      conn.protocol === this.config.separateProtocol
     ) {
       return this.createClient<Deno.QuicConn>(conn);
     } else {

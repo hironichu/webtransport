@@ -1,5 +1,5 @@
 //Copyright (c) 2025, Hironichu. All rights reserved.
-import { assert } from "@std/assert/assert";
+import { assert } from "@std/assert";
 import { decodeBase64 } from "@std/encoding/base64";
 export type alpnProtocols = Array<
   "h3" | "h3-qc-01" | "quic" | "h3-29" | string

@@ -8,3 +8,5 @@ export {
   type SendStream,
   StreamID,
 } from "./src/types/streamdef.ts";
+
+export type { ClientTransportType } from "./src/types/interfaces.ts";

@@ -39,8 +39,10 @@ export class WtClient implements ClientWTInterface<WebTransport> {
     ReceiveStream
   >();
 
-  public readonly signal: AbortController = new AbortController();
-  public constructor(public readonly transport: WebTransport) {
+  public constructor(
+    public readonly transport: WebTransport,
+    public readonly signal: AbortController,
+  ) {
     // console.debug("WtClient: New Webtransport Client initialized");
     this.transport.closed.then(() => {
       // console.debug("WT_Client: Transport closed");
@@ -108,7 +110,7 @@ export class WtClient implements ClientWTInterface<WebTransport> {
       this.receiveStream.set(id, stream);
       return id;
     } catch {
-      console.error("QC_Client: Error while waiting for an incoming stream");
+      // console.error("QC_Client: Error while waiting for an incoming stream");
       return undefined;
     }
   }
@@ -131,7 +133,7 @@ export class WtClient implements ClientWTInterface<WebTransport> {
       this.transport.close(closeInfo);
       this.signal.abort();
     } catch {
-      console.error("Error while closing transport");
+      console.error("[WTClient] Error while closing transport");
     }
   }
 }
@@ -158,20 +160,27 @@ export class QcClient implements ClientQcInterface<Deno.QuicConn> {
     StreamID,
     ReceiveStream
   >();
-  public readonly signal: AbortController = new AbortController();
+
   #readableController: ReadableByteStreamController | undefined;
 
-  public constructor(public readonly transport: Deno.QuicConn) {
+  public constructor(
+    public readonly transport: Deno.QuicConn,
+    public readonly signal: AbortController,
+  ) {
     // console.debug("QC_Client: New Webtransport Client initialized");
-    this.transport.closed.then((e) => {
-      this.signal.abort(e);
-    }).catch((e) => {
-      console.error("QC_Client: Error while closing transport");
-      this.signal.abort(e);
-    });
-    Promise.all([(async () => {
-      await this.#receiveDatagrams();
-    })()]);
+    this.transport.closed
+      .then((e) => {
+        this.signal.abort(e);
+      })
+      .catch((e) => {
+        // console.error("QC_Client: Error while closing transport", e);
+        this.signal.abort(e);
+      });
+    Promise.all([
+      (async () => {
+        await this.#receiveDatagrams();
+      })(),
+    ]);
   }
   /**
    * Returns the stream associated with the given stream ID.
@@ -188,7 +197,7 @@ export class QcClient implements ClientQcInterface<Deno.QuicConn> {
     } else if (this.receiveStream.has(streamID)) {
       return this.receiveStream.get(streamID);
     }
-    console.error("QC_Client: invalid streamid");
+    // console.error("QC_Client: invalid streamid");
     return undefined;
   }
   /**
@@ -223,7 +232,7 @@ export class QcClient implements ClientQcInterface<Deno.QuicConn> {
       this.receiveStream.set(id, stream);
       return id;
     } catch {
-      console.error("QC_Client: Error while waiting for an incoming stream");
+      // console.error("QC_Client: Error while waiting for an incoming stream");
       return undefined;
     }
   }
@@ -242,8 +251,8 @@ export class QcClient implements ClientQcInterface<Deno.QuicConn> {
   async sendDatagrams(buffer: Uint8Array): Promise<void | undefined> {
     try {
       return await this.transport.sendDatagram(buffer);
-    } catch {
-      console.error("Error while sending datagrams");
+    } catch (_) {
+      // console.error("Error while sending datagrams", e);
       return undefined;
     }
   }
@@ -266,7 +275,8 @@ export class QcClient implements ClientQcInterface<Deno.QuicConn> {
       try {
         datagram = await this.transport.readDatagram();
         if (
-          !datagram || this.#readableController === undefined ||
+          !datagram ||
+          this.#readableController === undefined ||
           this.signal.signal.aborted
         ) {
           break;
@@ -285,7 +295,7 @@ export class QcClient implements ClientQcInterface<Deno.QuicConn> {
     try {
       return this.readable;
     } catch {
-      console.error("Error while receiving datagrams");
+      // console.error("Error while receiving datagrams");
       return undefined;
     }
   }
@@ -294,5 +304,3 @@ export class QcClient implements ClientQcInterface<Deno.QuicConn> {
     this.signal.abort(info);
   }
 } // QUIC Client
-
-export type ClientTransportType = WebTransport | Deno.QuicConn;
