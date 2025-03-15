@@ -12,7 +12,7 @@ import type {
 } from "./types/interfaces.ts";
 
 export type ClientType = "WT" | "QC";
- 
+
 /**
  * A class representing a WebTransport client.
  *

@@ -14,7 +14,7 @@ import { Client } from "./client.ts";
  *    "./cert.pem", // path to the certificate file
  *    "./private.pem", // path to the private key file
  *    "h3-qc", // optional argument that will be used for only for QUIC connection in the protocol negotation
- * ); 
+ * );
  *
  * ```
  *

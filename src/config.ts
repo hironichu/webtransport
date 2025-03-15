@@ -80,10 +80,10 @@ export class ServerConfig {
 
   get getAlpnProtocols(): alpnProtocols {
     return this.alpnProtocols;
-  } 
+  }
 
   get getQuicOptions(): Deno.QuicEndpointOptions {
-    return this.quicOptions; 
+    return this.quicOptions;
   }
 
   get getCertFile(): string {

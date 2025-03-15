@@ -9,12 +9,12 @@ import { type ClientTransportType, QcClient, WtClient } from "./internal.ts";
 /**
  * A class representing a WebTransport and QUIC client.
  *
- * @example 
+ * @example
  * ```ts
  * import { Client } from "@webtransport/webtransport";
  * const client = new Client(transport);
  * ```
- * 
+ *
  * @module
  */
 export class Client<Type extends ClientTransportType> {
