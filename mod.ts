@@ -1,4 +1,5 @@
-export * from "./src/webtransport.ts";
+export * from "./src/server.ts";
+export * from "./src/client.ts";
 export { ServerConfig } from "./src/config.ts";
 
 export {
