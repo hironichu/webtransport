@@ -26,11 +26,13 @@ export class Client<Type extends ClientTransportType> {
    * @throws {Error} If the transport type is not supported.
    */
   public constructor(public readonly transport: Type) {
-    this.signal.signal.onabort = () => {
-      this.client.close();
-    };
     if (transport.constructor.name === "WebTransport") {
       this.client = new WtClient(transport as WebTransport, this.signal);
+      transport.closed.then(() => {
+        this.signal.abort();
+      }).catch((e) => {
+        this.signal.abort(e);
+      });
     } else if (transport.constructor.name === "QuicConn") {
       this.client = new QcClient(transport as Deno.QuicConn, this.signal);
     } else {
