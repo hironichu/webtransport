@@ -43,10 +43,10 @@ export class WtClient implements ClientWTInterface<WebTransport> {
     public readonly transport: WebTransport,
     public readonly signal: AbortController,
   ) {
-    // console.debug("WtClient: New Webtransport Client initialized");
     this.transport.closed.then(() => {
-      // console.debug("WT_Client: Transport closed");
       this.signal.abort();
+    }).catch((e) => {
+      this.signal.abort(e);
     });
   }
 
@@ -131,7 +131,6 @@ export class WtClient implements ClientWTInterface<WebTransport> {
   close(closeInfo?: WebTransportCloseInfo): void {
     try {
       this.transport.close(closeInfo);
-      this.signal.abort();
     } catch {
       console.error("[WTClient] Error while closing transport");
     }
@@ -301,6 +300,5 @@ export class QcClient implements ClientQcInterface<Deno.QuicConn> {
   }
   close(info?: Deno.QuicCloseInfo): void {
     this.transport.close(info);
-    this.signal.abort(info);
   }
 } // QUIC Client
