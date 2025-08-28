@@ -19,9 +19,7 @@ export class StreamID {
   }
 }
 
-export type BidirectionalStream =
-  & WebTransportBidirectionalStream
-  & Deno.QuicBidirectionalStream;
+export type BidirectionalStream = WebTransportBidirectionalStream | Deno.QuicBidirectionalStream;
 export type SendStream = WebTransportSendStream | Deno.QuicSendStream;
 export type ReceiveStream = WebTransportReceiveStream | Deno.QuicReceiveStream;
 export type Datagrams = WebTransportDatagramDuplexStream;

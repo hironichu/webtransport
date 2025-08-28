@@ -77,8 +77,8 @@ export class Client<Type extends ClientTransportType> {
   openBidirectionalStream(): Promise<StreamID | undefined> | undefined {
     try {
       return this.client.openBidirectionalStream();
-    } catch {
-      console.error("Error while opening bidirectional stream");
+    } catch (e) {
+      console.error("Error while opening bidirectional stream", e);
       return undefined;
     }
   }

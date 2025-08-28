@@ -119,8 +119,24 @@ export class WtClient implements ClientWTInterface<WebTransport> {
    * Opens a bidirectional stream over the transport.
    * @returns {Promise<StreamID>} A promise that resolves to the stream ID.
    */
-  openBidirectionalStream(): Promise<StreamID> {
-    throw new Error("Method not implemented.");
+  async openBidirectionalStream(): Promise<StreamID | undefined> {
+    if (this.signal.signal.aborted) {
+      return undefined;
+    }
+    try {
+      const bidistream = this.transport.incomingBidirectionalStreams;
+
+      const stream = (await bidistream.getReader().read()).value;
+      if (!stream) {
+        return undefined;
+      }
+      const id = new StreamID();
+      this.bidirectionalStreams.set(id, stream);
+      return id;
+    } catch {
+      // console.error("WTClient: Error while waiting for an incoming stream");
+      return undefined;
+    }
   }
 
   /**
@@ -239,8 +255,20 @@ export class QcClient implements ClientQcInterface<Deno.QuicConn> {
    * Opens a bidirectional stream over the transport.
    * @returns {Promise<StreamID>} A promise that resolves to the stream ID.
    */
-  openBidirectionalStream(): Promise<StreamID> {
-    throw new Error("Method not implemented.");
+  async openBidirectionalStream(): Promise<StreamID | undefined> {
+    try {
+      const bidistream = this.transport.incomingBidirectionalStreams;
+      const stream = (await bidistream.getReader().read()).value;
+      if (!stream) {
+        return undefined;
+      }
+      const id = new StreamID();
+      this.bidirectionalStreams.set(id, stream);
+      return id;
+    } catch {
+      // console.error("QC_Client: Error while waiting for an incoming stream");
+      return undefined;
+    }
   }
   /**
    * Sends datagrams over the transport.
